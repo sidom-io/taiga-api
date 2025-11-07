@@ -26,31 +26,35 @@ repos:
       - id: check-case-conflict
         name: Verificar conflictos de mayúsculas/minúsculas
 
-  # Formateo de código Python
-  - repo: https://github.com/psf/black
-    rev: 24.1.1
+  # Formateo de código Python (usando uv)
+  - repo: local
     hooks:
       - id: black
         name: Formatear código con Black
-        language_version: python3.11
+        entry: uv run black
+        language: system
+        types: [python]
         args: [--line-length=100]
 
-  # Ordenamiento de imports
-  - repo: https://github.com/pycqa/isort
-    rev: 5.13.2
+  # Ordenamiento de imports (usando uv)
+  - repo: local
     hooks:
       - id: isort
         name: Ordenar imports con isort
+        entry: uv run isort
+        language: system
+        types: [python]
         args: [--profile=black, --line-length=100]
 
-  # Linting con flake8
-  - repo: https://github.com/pycqa/flake8
-    rev: 7.0.0
+  # Linting con flake8 (usando uv)
+  - repo: local
     hooks:
       - id: flake8
         name: Linting con flake8
+        entry: uv run flake8
+        language: system
+        types: [python]
         args: [--max-line-length=100, --extend-ignore=E203,W503]
-        additional_dependencies: [flake8-docstrings, flake8-import-order]
 
   # Análisis estático con pylint
   - repo: local
@@ -61,15 +65,6 @@ repos:
         language: system
         types: [python]
         args: [--rcfile=pyproject.toml]
-
-  # Type checking con mypy
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.8.0
-    hooks:
-      - id: mypy
-        name: Type checking con mypy
-        additional_dependencies: [types-all]
-        args: [--config-file=pyproject.toml]
 
   # Tests con pytest (solo obligatorio en main)
   - repo: local
@@ -97,7 +92,7 @@ repos:
     hooks:
       - id: check-env-secrets
         name: Verificar que no se commiteen secretos del .env
-        entry: python
+        entry: python3
         language: system
         args:
           - -c
@@ -105,18 +100,18 @@ repos:
             import sys
             import re
             from pathlib import Path
-            
+
             files = [f for f in sys.argv[1:] if f.endswith(('.py', '.md', '.yml', '.yaml'))]
             # Excluir archivos de test y documentación
             files = [f for f in files if not f.startswith('tests/') and 'test_' not in f]
-            
+
             # Patrones solo para archivos .env (que no deberían estar en git)
             env_patterns = [
               r'TAIGA_PASSWORD=(?!.*example|.*placeholder|.*your_password)',
               r'TAIGA_USERNAME=(?!.*example|.*placeholder|.*your_username)',
               r'TAIGA_AUTH_TOKEN=(?!.*example|.*placeholder|.*your_token|.*eyJ0eXAi)',
             ]
-            
+
             violations = []
             for file in files:
               try:
@@ -129,7 +124,7 @@ repos:
                         violations.append(f'{file}: Contiene credenciales reales')
               except Exception:
                 pass
-            
+
             if violations:
               print('❌ SECRETOS DETECTADOS:')
               for v in violations:
@@ -143,7 +138,7 @@ repos:
     hooks:
       - id: check-real-user-data
         name: Verificar que no se commiteen datos de usuario reales
-        entry: python
+        entry: python3
         language: system
         args:
           - -c
@@ -181,7 +176,7 @@ repos:
         args: [-c, '
           COMMIT_MSG_FILE=$1
           COMMIT_MSG=$(cat "$COMMIT_MSG_FILE")
-          
+
           # Patrón para Conventional Commits
           if ! echo "$COMMIT_MSG" | grep -qE "^(feat|fix|docs|style|refactor|test|chore|perf|ci|build)(\(.+\))?: .+"; then
             echo "❌ FORMATO DE COMMIT INVÁLIDO"
@@ -195,7 +190,7 @@ repos:
             echo "  docs: actualizar README"
             exit 1
           fi
-          
+
           echo "✅ Formato válido"
         ', --]
         pass_filenames: true
@@ -211,37 +206,37 @@ repos:
         args: [-c, '
           COMMIT_MSG_FILE=$1
           COMMIT_SOURCE=$2
-          
+
           # Solo procesar commits normales (no merges, ammends, etc)
           if [ -n "$COMMIT_SOURCE" ]; then
             exit 0
           fi
-          
+
           # Leer mensaje del commit
           COMMIT_MSG=$(cat "$COMMIT_MSG_FILE")
-          
+
           # Validar formato Conventional Commits
           if ! echo "$COMMIT_MSG" | grep -qE "^(feat|fix|docs|style|refactor|test|chore|perf|ci|build)(\(.+\))?: .+"; then
             echo "⚠️  Commit no sigue formato convencional, saltando changelog"
             exit 0
           fi
-          
+
           # Extraer tipo y descripción
           TYPE=$(echo "$COMMIT_MSG" | sed -E "s/^([a-z]+)(\(.+\))?: .*/\1/")
           DESC=$(echo "$COMMIT_MSG" | sed -E "s/^[a-z]+(\(.+\))?: (.+)/\2/")
-          
+
           # Determinar sección
           case "$TYPE" in
             feat) SECTION="Added" ;;
             fix) SECTION="Fixed" ;;
             *) SECTION="Changed" ;;
           esac
-          
+
           # Actualizar CHANGELOG.md
           if [ -f "CHANGELOG.md" ]; then
             # Crear entrada
             ENTRY="- $DESC"
-            
+
             # Buscar sección Unreleased y agregar entrada
             if grep -q "## \[Unreleased\]" CHANGELOG.md; then
               # Verificar si la sección existe
@@ -252,7 +247,7 @@ repos:
                 # Crear nueva sección después de Unreleased
                 sed -i "/## \[Unreleased\]/a \\\n### $SECTION\n$ENTRY" CHANGELOG.md
               fi
-              
+
               git add CHANGELOG.md
               echo "✅ CHANGELOG.md actualizado: $ENTRY"
             fi

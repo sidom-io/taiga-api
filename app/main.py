@@ -99,6 +99,19 @@ async def create_task(payload: TaskCreateRequest, taiga_client: TaigaClientDep) 
     return TaskResponse(**task)
 
 
+@app.get("/epics")
+async def list_epics(
+    project: Annotated[Union[int, str], Query(..., description="ID o slug de proyecto")],
+    taiga_client: TaigaClientDep,
+) -> List[dict]:
+    try:
+        epics = await taiga_client.list_epics(project=project)
+    except TaigaClientError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    return epics
+
+
 @app.get("/user-stories", response_model=List[UserStoryResponse])
 async def list_user_stories(
     project: Annotated[Union[int, str], Query(..., description="ID o slug de proyecto")],

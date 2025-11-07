@@ -247,6 +247,25 @@ class TaigaClient:
 
         return self._json_list_or_error(response)
 
+    async def list_epics(self, project: Union[int, str]) -> List[Dict[str, Any]]:
+        """Lista todas las épicas de un proyecto."""
+        client = await self._ensure_client()
+        project_id = await self._resolve_project(project)
+        token = await self._get_token()
+        headers = self._build_headers(token)
+
+        params = {"project": project_id}
+        try:
+            response = await client.get("epics", params=params, headers=headers)
+        except httpx.RequestError as exc:
+            raise TaigaClientError(f"No se pudieron obtener las épicas: {exc}") from exc
+        self._record_response(response)
+
+        if response.status_code != 200:
+            raise TaigaClientError(self._parse_error(response))
+
+        return self._json_list_or_error(response)
+
     async def get_user_story(self, user_story_id: int) -> Dict[str, Any]:
         client = await self._ensure_client()
         token = await self._get_token()

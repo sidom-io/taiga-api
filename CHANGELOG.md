@@ -8,6 +8,7 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 ## [Unreleased]
 
 ### Added
+- agregar actualización automática de changelog
 - Sistema de pre-commit hooks con validaciones completas
 - Pipeline CI/CD para GitLab con múltiples etapas de validación
 - Configuración de desarrollo automatizada con scripts
@@ -30,6 +31,7 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 ## [0.1.0] - 2024-11-07
 
 ### Added
+- agregar actualización automática de changelog
 - Servicio FastAPI asíncrono para integración con Taiga
 - Cliente HTTP asíncrono con cache de tokens
 - Soporte para autenticación por token de sesión del navegador

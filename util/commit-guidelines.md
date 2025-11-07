@@ -62,38 +62,51 @@ chore(deps): actualizar dependencias de desarrollo
 - **BREAKING CHANGE**: Incrementa MAJOR
 - **chore, docs, style, test**: No incrementan versión
 
-## Proceso de Release
+## Proceso Automático
 
-1. **Desarrollo**: Commits en ramas feature
-2. **Pre-commit**: Validaciones automáticas
-3. **Merge**: A main con todos los tests pasando
-4. **Changelog**: Actualización automática
-5. **Tag**: Creación automática de versión
+### En Cada Commit
 
-## Hooks Automáticos
+```bash
+git commit -m "feat(auth): agregar nueva funcionalidad"
+```
 
-### Pre-commit
-- Validación de formato de commit
-- Actualización de CHANGELOG.md
-- Ejecución de tests (obligatorio en main)
-- Linting y formateo
+Automáticamente se ejecuta:
+1. **Pre-commit**: Formato, linting, validaciones
+2. **Prepare-commit-msg**: Actualiza CHANGELOG.md
+3. **Commit-msg**: Valida formato Conventional Commits
+4. **Commit**: Se completa con changelog actualizado
 
-### Post-commit
-- Actualización de versión en pyproject.toml
-- Generación de tags automáticos
+### Changelog Automático
+
+El CHANGELOG.md se actualiza automáticamente según el tipo de commit:
+- `feat` → Sección "Added"
+- `fix` → Sección "Fixed"
+- Otros → Sección "Changed"
+
+**No es necesario editar CHANGELOG.md manualmente**
+
+### Proceso de Release
+
+1. **Desarrollo**: Commits en ramas feature (changelog se actualiza automáticamente)
+2. **Merge**: A main con todos los tests pasando
+3. **Tag**: Creación manual de versión cuando sea necesario
 
 ## Comandos Útiles
 
 ```bash
-# Commit con validación completa
-make commit-safe
+# Commit normal (todo automático)
+git commit -m "feat(scope): descripción"
 
-# Commit work-in-progress (sin tests)
-make commit-wip
-
-# Verificar formato antes de commit
-git log --oneline -10
+# Omitir tests en ramas de desarrollo
+SKIP_TESTS=1 git commit -m "feat: trabajo en progreso"
 
 # Ver changelog generado
 cat CHANGELOG.md
+head -30 CHANGELOG.md
+
+# Ver historial de commits
+git log --oneline -10
+
+# Verificar formato de último commit
+git log -1 --pretty=format:%s
 ```

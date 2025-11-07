@@ -2,7 +2,7 @@
 
 ## 🚀 Configuración Inicial
 
-### 1. Configuración Automática (Recomendado)
+### Configuración Automática (Recomendado)
 
 ```bash
 # Clonar el repositorio
@@ -13,17 +13,23 @@ cd taiga-fastapi-uv
 ./scripts/setup-dev.sh
 ```
 
-### 2. Configuración Manual
+Este script instala:
+- Dependencias de desarrollo con `uv`
+- Hooks de Git (pre-commit, prepare-commit-msg, commit-msg, pre-push)
+- Validaciones de código
+- Sistema de changelog automático
+
+### Configuración Manual
 
 ```bash
-# Instalar dependencias de desarrollo
+# 1. Instalar dependencias
 uv sync --dev
 
-# Instalar pre-commit hooks
+# 2. Instalar todos los hooks de Git
 uv run pre-commit install
-
-# Ejecutar validaciones iniciales
-make ci
+uv run pre-commit install --hook-type prepare-commit-msg
+uv run pre-commit install --hook-type commit-msg
+uv run pre-commit install --hook-type pre-push
 ```
 
 ## 🔧 Herramientas Configuradas
@@ -44,28 +50,51 @@ make ci
 - **Security**: Detección de secretos y vulnerabilidades
 - **Deploy**: Despliegue automático (staging/production)
 
-## 📋 Comandos Esenciales
+## 📋 Flujo de Trabajo Diario
+
+### Desarrollo Normal
 
 ```bash
-# Desarrollo diario
+# 1. Iniciar servidor de desarrollo
+uv run uvicorn app.main:app --reload
+
+# 2. Hacer cambios en el código
+
+# 3. Commit (todo automático)
+git add .
+git commit -m "feat(scope): descripción"
+
+# Automáticamente se ejecuta:
+# ✓ Formateo (black, isort)
+# ✓ Linting (flake8, pylint)
+# ✓ Validación de secretos
+# ✓ Tests (si estás en main)
+# ✓ Actualización de CHANGELOG.md
+# ✓ Validación de formato de commit
+
+# 4. Push
+git push
+```
+
+### Comandos Opcionales (Makefile)
+
+```bash
+# Desarrollo
 make dev                     # Servidor de desarrollo
 make test                    # Ejecutar tests
 make lint                    # Linting completo
 make format                  # Formatear código
 
-# Validación completa
+# Validación
 make ci                      # Simular pipeline de CI
-make pre-commit              # Ejecutar todos los hooks
-make pre-commit-skip-tests   # Hooks sin tests (ramas desarrollo)
 
-# Commits convenientes
-make commit-wip              # Commit work-in-progress (sin tests)
-make commit-safe             # Commit con todas las validaciones
+# Changelog
+make changelog               # Ver changelog completo
+make changelog-unreleased    # Ver cambios pendientes
 
 # Utilidades
 make clean                   # Limpiar archivos temporales
 make help                    # Ver todos los comandos
-make info                    # Información del proyecto
 ```
 
 ## 🛡️ Reglas de Seguridad
@@ -152,19 +181,26 @@ taiga-fastapi-uv/
 
 ### Desarrollo Local
 1. Crear rama feature: `git checkout -b feature/nueva-funcionalidad`
-2. Desarrollar con validación continua: `make test`
-3. Commits durante desarrollo (usar formato Conventional Commits):
-   - Work-in-progress: `make commit-wip` (omite tests)
-   - Commit completo: `make commit-safe` (incluye tests)
-   - Manual: `git commit -m "feat(scope): descripción"`
-   - Formato: `tipo(ámbito): descripción` (ver util/commit-guidelines.md)
+2. Desarrollar y hacer commits:
+   ```bash
+   git add .
+   git commit -m "feat(scope): descripción"
+   # Todo se valida automáticamente
+   ```
+3. Formato de commits (Conventional Commits):
+   - `feat(scope): descripción` - Nueva funcionalidad
+   - `fix(scope): descripción` - Corrección de errores
+   - `docs: descripción` - Cambios en documentación
+   - Ver `util/commit-guidelines.md` para más detalles
 4. Changelog se actualiza automáticamente en cada commit
-5. Antes de merge: Asegurar que `make ci` pase
-6. Push y crear Merge Request
+5. Push y crear Merge Request:
+   ```bash
+   git push origin feature/nueva-funcionalidad
+   ```
 
 ### Pipeline CI/CD
 1. **Validate**: Formato, linting, tipos
-2. **Test**: Tests unitarios e integración  
+2. **Test**: Tests unitarios e integración
 3. **Security**: Detección de secretos
 4. **Deploy**: Automático a staging, manual a production
 

@@ -173,78 +173,83 @@ Si sigues teniendo problemas:
 
 ## Flujo de Trabajo de Desarrollo
 
-### Comandos Principales
+### Desarrollo Diario
 
 ```bash
-# Configuración inicial
-make setup-dev              # Configurar entorno completo
-make install                 # Solo instalar dependencias
+# 1. Hacer cambios en el código
+# 2. Agregar archivos
+git add .
 
-# Desarrollo
-make dev                     # Iniciar servidor de desarrollo
-make test                    # Ejecutar todos los tests
-make lint                    # Linting (flake8 + pylint)
-make format                  # Formatear código (black + isort)
+# 3. Commit (todo se valida automáticamente)
+git commit -m "feat(scope): descripción del cambio"
 
-# Validación completa (como CI)
-make ci                      # Ejecutar todas las validaciones
-
-# Utilidades
-make clean                   # Limpiar archivos temporales
-make help                    # Ver todos los comandos disponibles
+# Automáticamente se ejecuta:
+# ✓ Formateo de código (black, isort)
+# ✓ Linting (flake8, pylint)
+# ✓ Validación de secretos
+# ✓ Tests (en main)
+# ✓ Actualización de CHANGELOG.md
 ```
 
-### Pre-commit Hooks
+### Formato de Commits
 
-Este proyecto usa pre-commit hooks para garantizar calidad del código:
-
-- **Formato**: Black + isort
-- **Linting**: Flake8 + Pylint  
-- **Tests**: Pytest (obligatorio en `main`, opcional en otras ramas)
-- **Seguridad**: Detección de secretos y datos personales
-- **Tipos**: MyPy (opcional)
-
-#### Ejecución de Hooks
+Usa [Conventional Commits](https://www.conventionalcommits.org/):
 
 ```bash
-# Ejecutar todos los hooks (incluye tests)
-make pre-commit
-
-# Ejecutar hooks omitiendo tests (útil en ramas de desarrollo)
-make pre-commit-skip-tests
-
-# Los tests son obligatorios solo en main
-# En otras ramas puedes omitirlos con: SKIP_TESTS=1
+feat(auth): agregar soporte para tokens de sesión
+fix(client): corregir timeout de conexión
+docs: actualizar guía de instalación
+test: agregar tests para autenticación
 ```
 
-#### Commits Convenientes
+**Tipos válidos:** `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`, `perf`, `ci`, `build`
+
+### Validaciones Automáticas
+
+Los hooks de Git se ejecutan automáticamente en cada commit:
+
+- **Pre-commit**: Formato, linting, validación de secretos
+- **Prepare-commit-msg**: Actualización automática de CHANGELOG.md
+- **Commit-msg**: Validación de formato Conventional Commits
+- **Pre-push**: Tests obligatorios antes de push a `main`
+
+### Omitir Tests en Desarrollo
+
+En ramas de desarrollo (no `main`):
 
 ```bash
-# Commit work-in-progress (omite tests)
-make commit-wip
+# Omitir tests en este commit
+SKIP_TESTS=1 git commit -m "feat: trabajo en progreso"
+```
 
-# Commit con todas las validaciones
-make commit-safe
+**Nota:** Los tests son siempre obligatorios en `main`
 
-# Commit manual omitiendo tests
-SKIP_TESTS=1 git commit -m "WIP: mensaje"
+### Comandos Útiles (Opcional)
+
+El proyecto incluye un Makefile con comandos convenientes:
+
+```bash
+make dev          # Iniciar servidor
+make test         # Ejecutar tests
+make lint         # Linting
+make format       # Formatear código
+make ci           # Validación completa (simula CI)
 ```
 
 ### Reglas de Desarrollo
 
-⚠️ **IMPORTANTE**: Lee el archivo `.llms` para entender las reglas imperantes del proyecto.
+**Reglas automáticas (aplicadas por hooks):**
+- ✅ Formato de código consistente (black, isort)
+- ✅ Código sin errores de linting (flake8, pylint)
+- ✅ Sin secretos o datos personales en commits
+- ✅ Formato Conventional Commits obligatorio
+- ✅ CHANGELOG.md actualizado automáticamente
+- ✅ Tests obligatorios en `main`
 
-**Reglas críticas:**
-- ❌ NO commitear datos del `.env`
-- ❌ NO usar credenciales reales en ejemplos  
-- ❌ NO permitir commits que no pasen tests en `main`
-- ✅ Todos los commits deben pasar pre-commit hooks
-- ✅ Mantener cobertura de tests > 80%
-
-**Flexibilidad en ramas de desarrollo:**
-- ✅ Puedes omitir tests en ramas feature/develop con `SKIP_TESTS=1`
-- ✅ Tests obligatorios solo al hacer merge a `main`
-- ✅ Usa `make commit-wip` para commits de trabajo en progreso
+**Flexibilidad en desarrollo:**
+- En ramas feature/develop: Tests opcionales con `SKIP_TESTS=1`
+- En `main`: Tests siempre obligatorios
+- Changelog se actualiza automáticamente en cada commit
 
 ## Recursos Adicionales
 
@@ -260,17 +265,20 @@ SKIP_TESTS=1 git commit -m "WIP: mensaje"
 - **CHANGELOG.md**: Registro automático de cambios del proyecto
 - **Guías de commits**: Ver `util/commit-guidelines.md` para formato de commits
 
-## Instalación y Configuración de Desarrollo
+## Instalación y Configuración
 
-### Instalación Rápida
+### Instalación Rápida (Recomendado)
 
 ```bash
-# Instalar dependencias
-uv sync --dev
-
-# Configurar entorno de desarrollo completo (recomendado)
+# Configurar entorno completo (dependencias + hooks + validaciones)
 ./scripts/setup-dev.sh
 ```
+
+Este script instala:
+- Dependencias de desarrollo
+- Hooks de pre-commit automáticos
+- Validaciones de código
+- Sistema de changelog automático
 
 ### Instalación Manual
 
@@ -278,21 +286,21 @@ uv sync --dev
 # 1. Instalar dependencias
 uv sync --dev
 
-# 2. Instalar pre-commit hooks
+# 2. Instalar hooks de Git
 uv run pre-commit install
-
-# 3. Ejecutar validaciones iniciales
-make ci
+uv run pre-commit install --hook-type prepare-commit-msg
+uv run pre-commit install --hook-type commit-msg
+uv run pre-commit install --hook-type pre-push
 ```
 
-## Ejecución en desarrollo
+## Ejecución en Desarrollo
 
 ```bash
-# Opción 1: Usando make (recomendado)
-make dev
-
-# Opción 2: Comando directo
+# Iniciar servidor de desarrollo
 uv run uvicorn app.main:app --reload
+
+# El servidor estará disponible en http://localhost:8000
+# Documentación interactiva en http://localhost:8000/docs
 ```
 
 El servicio quedará disponible en `http://0.0.0.0:8000/`.

@@ -65,32 +65,48 @@ tipo(ámbito): descripción
 ### 4. Flujo de Trabajo
 
 ```
-Desarrollo → Pre-commit → Commit → Push → CI/CD → Merge
-    ↓           ↓           ↓        ↓       ↓        ↓
-  Tests     Validación  Changelog  Tests   Tests   Release
+git add . → git commit -m "tipo: desc" → git push
+              ↓
+    ┌─────────┴─────────┐
+    │   Pre-commit      │ → Formato, linting, validaciones
+    │   Prepare-commit  │ → Actualiza CHANGELOG.md
+    │   Commit-msg      │ → Valida formato
+    └───────────────────┘
+              ↓
+         Commit OK → Push → CI/CD → Merge
 ```
 
-**Idempotencia:**
-- Validaciones consistentes en local y CI
-- Mismo resultado independiente de cuántas veces se ejecute
-- Hooks automáticos garantizan cumplimiento
+**Características:**
+- **Automático**: Todo se ejecuta con `git commit`
+- **Idempotente**: Mismo resultado siempre
+- **Transparente**: Flujo git nativo
+- **Sin make**: Opcional, no obligatorio
 
 ## Comandos Principales
 
-```bash
-# Configuración inicial
-make setup-dev              # Configura todo el sistema
+### Flujo Normal (Recomendado)
 
+```bash
+# Configuración inicial (una sola vez)
+./scripts/setup-dev.sh
+
+# Desarrollo diario
+git add .
+git commit -m "feat(scope): descripción"
+# ↑ Esto ejecuta TODAS las validaciones automáticamente
+
+# Push
+git push
+```
+
+### Comandos Opcionales (Makefile)
+
+```bash
 # Desarrollo
 make dev                    # Servidor de desarrollo
 make test                   # Tests completos
 make lint                   # Linting
 make format                 # Formateo
-
-# Commits
-make commit-wip             # Work-in-progress (sin tests)
-make commit-safe            # Commit completo
-git commit -m "tipo: desc"  # Manual con validación
 
 # Changelog
 make changelog              # Ver changelog

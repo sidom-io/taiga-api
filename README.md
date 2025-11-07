@@ -8,15 +8,9 @@ Este servicio es parte del proyecto **VUCE-SIDOM DAI** (Declaración Aduanera In
 
 ### Arquitectura del Sistema
 
-```
-Usuario → Load Balancer → Frontend (NextJS 15) → Backend (FastAPI) → MySQL 8.0
-                                                      ↓
-                                                  RabbitMQ
-                                                      ↓
-                                              Adapter (.NET x86)
-                                                      ↓
-                                              KIT Malvina/Maria
-```
+![alt text](image.png)
+
+![alt text](image-1.png)
 
 ### Módulos del Sistema
 

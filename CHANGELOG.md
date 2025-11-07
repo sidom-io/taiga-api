@@ -22,6 +22,29 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 - Soporte para omitir tests en ramas de desarrollo (SKIP_TESTS=1)
 
 ### Changed
+- documentar catálogo D5 y actualizar referencias
+
+- Crear util/d5-catalogo-documentacion.md con modelo completo
+  - 4 entidades: NCM, ITEM, SUBITEM, CATALOGO_CAMPO
+  - Diagramas ER en Mermaid
+  - Relaciones, validaciones y casos de uso
+  - Verificado contra DER en VUCE-Modelo de datos.drawio.xml
+
+- Actualizar referencias en toda la documentación
+  - util/vuce-sidom-architecture.md: agregar modelo D5
+  - util/project-status.md: métricas actualizadas (16 HU, 102 tareas)
+  - util/kit-maria-integration.md: HU afectadas y referencias
+  - README.md: documentación de módulos
+  - util/README.md: árbol actualizado
+
+- Documentar fuentes de información
+  - Google Drive SIDOM (Historias de Usuario, TASKs D3)
+  - Taiga (snapshots JSON en util/llm-docs-proyect/)
+  - Decisiones pendientes marcadas como SIDOM/DGA
+
+- Archivos DrawIO ubicados correctamente
+  - util/llm-docs-proyect/graficos.drawio.xml (597K)
+  - util/llm-docs-proyect/VUCE-Modelo de datos.drawio.xml (512K)
 - actualizar README con estructura completa del proyecto
 
 - Árbol completo del proyecto con todos los archivos y carpetas

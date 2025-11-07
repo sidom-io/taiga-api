@@ -116,9 +116,9 @@ class TaigaClient:
             "base_url": self.base_url,
             "username": self.username,
             "token_cached": self._token is not None,
-            "token_expires_at": self._token_expires_at.isoformat()
-            if self._token_expires_at
-            else None,
+            "token_expires_at": (
+                self._token_expires_at.isoformat() if self._token_expires_at else None
+            ),
             "last_response": self._last_response_meta or None,
         }
 
@@ -252,7 +252,9 @@ class TaigaClient:
         try:
             response = await client.get(f"userstories/{user_story_id}", headers=headers)
         except httpx.RequestError as exc:
-            raise TaigaClientError(f"No se pudo obtener la historia {user_story_id}: {exc}") from exc
+            raise TaigaClientError(
+                f"No se pudo obtener la historia {user_story_id}: {exc}"
+            ) from exc
         self._record_response(response)
 
         if response.status_code != 200:
@@ -303,9 +305,9 @@ class TaigaClient:
             "authenticated": True,
             "user": data.get("username"),
             "full_name": data.get("full_name"),
-            "token_expires_at": self._token_expires_at.isoformat()
-            if self._token_expires_at
-            else None,
+            "token_expires_at": (
+                self._token_expires_at.isoformat() if self._token_expires_at else None
+            ),
         }
 
     async def auth_diagnostics(self) -> Dict[str, Any]:
@@ -326,10 +328,10 @@ class TaigaClient:
                         "response": self._safe_body(response),
                         "token_cached": True,
                         "token_preview": self._mask_token(self.auth_token),
-                        "token_expires_at": self._token_expires_at.isoformat()
-                        if self._token_expires_at
-                        else None,
-                        "auth_method": "api_token"
+                        "token_expires_at": (
+                            self._token_expires_at.isoformat() if self._token_expires_at else None
+                        ),
+                        "auth_method": "api_token",
                     }
                 else:
                     return {
@@ -341,23 +343,19 @@ class TaigaClient:
                         "token_preview": None,
                         "token_expires_at": None,
                         "auth_method": "api_token",
-                        "error": "Token de API inválido"
+                        "error": "Token de API inválido",
                     }
             except httpx.RequestError as exc:
                 return {
                     "ok": False,
                     "error": f"No se pudo conectar a Taiga: {exc}",
                     "url": f"{self.base_url}users/me",
-                    "auth_method": "api_token"
+                    "auth_method": "api_token",
                 }
 
         # Si no tenemos token de API, probar con usuario/contraseña
         if not (self.username and self.password):
-            return {
-                "ok": False,
-                "error": "No hay credenciales disponibles",
-                "auth_method": "none"
-            }
+            return {"ok": False, "error": "No hay credenciales disponibles", "auth_method": "none"}
 
         client = await self._ensure_client()
         payload = {
@@ -374,7 +372,7 @@ class TaigaClient:
                 "ok": False,
                 "error": f"No se pudo conectar a Taiga: {exc}",
                 "url": url,
-                "auth_method": "username_password"
+                "auth_method": "username_password",
             }
 
         self._record_response(response)
@@ -398,10 +396,10 @@ class TaigaClient:
             "response": body,
             "token_cached": self._token is not None,
             "token_preview": masked,
-            "token_expires_at": self._token_expires_at.isoformat()
-            if self._token_expires_at
-            else None,
-            "auth_method": "username_password"
+            "token_expires_at": (
+                self._token_expires_at.isoformat() if self._token_expires_at else None
+            ),
+            "auth_method": "username_password",
         }
 
     @staticmethod

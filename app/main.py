@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 from typing import Annotated, List, Union
 
-from dotenv import load_dotenv, find_dotenv
+from dotenv import find_dotenv, load_dotenv
 from fastapi import Depends, FastAPI, HTTPException, Query
 
 from app.schemas import TaskCreateRequest, TaskResponse, UserStoryResponse

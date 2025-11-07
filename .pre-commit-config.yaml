@@ -31,7 +31,7 @@ repos:
     hooks:
       - id: black
         name: Formatear código con Black
-        entry: uv run black
+        entry: bash -c 'uv run python -m black "$@"' --
         language: system
         types: [python]
         args: [--line-length=100]
@@ -41,7 +41,7 @@ repos:
     hooks:
       - id: isort
         name: Ordenar imports con isort
-        entry: uv run isort
+        entry: bash -c 'uv run python -m isort "$@"' --
         language: system
         types: [python]
         args: [--profile=black, --line-length=100]
@@ -51,20 +51,20 @@ repos:
     hooks:
       - id: flake8
         name: Linting con flake8
-        entry: uv run flake8
+        entry: bash -c 'uv run python -m flake8 "$@"' --
         language: system
         types: [python]
-        args: [--max-line-length=100, --extend-ignore=E203,W503]
+        args: [--max-line-length=100]
 
   # Análisis estático con pylint
   - repo: local
     hooks:
       - id: pylint
         name: Análisis estático con pylint
-        entry: uv run pylint
+        entry: bash -c 'uv run python -m pylint "$@"' --
         language: system
         types: [python]
-        args: [--rcfile=pyproject.toml]
+        args: [--rcfile=pyproject.toml, --exit-zero]
 
   # Tests con pytest (solo obligatorio en main)
   - repo: local

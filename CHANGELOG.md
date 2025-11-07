@@ -1,0 +1,52 @@
+# Changelog
+
+Todos los cambios notables de este proyecto serán documentados en este archivo.
+
+El formato está basado en [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+### Added
+- Sistema de pre-commit hooks con validaciones completas
+- Pipeline CI/CD para GitLab con múltiples etapas de validación
+- Configuración de desarrollo automatizada con scripts
+- Tests unitarios básicos para FastAPI y cliente Taiga
+- Sistema de documentación estructurado en util/
+- Contrato LLM-Humano para manejo de documentación
+- Makefile con comandos de desarrollo comunes
+- Soporte para omitir tests en ramas de desarrollo (SKIP_TESTS=1)
+
+### Changed
+- Actualizada configuración de pyproject.toml con dependencias de desarrollo
+- Mejorada documentación con separación clara de responsabilidades
+- Optimizada configuración de herramientas (Black, Flake8, Pylint, MyPy)
+
+### Security
+- Implementada detección automática de secretos en pre-commit
+- Validación de datos personales para prevenir commits accidentales
+- Configuración de .gitignore para proteger archivos sensibles
+
+## [0.1.0] - 2024-11-07
+
+### Added
+- Servicio FastAPI asíncrono para integración con Taiga
+- Cliente HTTP asíncrono con cache de tokens
+- Soporte para autenticación por token de sesión del navegador
+- Soporte alternativo para autenticación usuario/contraseña
+- Endpoints de diagnóstico para troubleshooting
+- Documentación completa de configuración y uso
+- Esquemas Pydantic para validación de datos
+- Configuración con variables de entorno
+
+### Features
+- Crear tareas en Taiga via API REST
+- Listar historias de usuario con filtros
+- Obtener detalles de historias específicas
+- Listar tareas asociadas a historias
+- Cache inteligente de tokens de autenticación
+- Manejo robusto de errores y reconexión
+
+---
+
+**Nota**: Este changelog se actualiza automáticamente mediante hooks de pre-commit.

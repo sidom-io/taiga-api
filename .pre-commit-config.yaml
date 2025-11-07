@@ -1,0 +1,265 @@
+# Pre-commit hooks para Taiga FastAPI UV
+# Ver https://pre-commit.com para más información
+
+repos:
+  # Hooks básicos de pre-commit
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+        name: Eliminar espacios en blanco al final
+      - id: end-of-file-fixer
+        name: Asegurar nueva línea al final del archivo
+      - id: check-yaml
+        name: Validar sintaxis YAML
+      - id: check-json
+        name: Validar sintaxis JSON
+      - id: check-toml
+        name: Validar sintaxis TOML
+      - id: check-merge-conflict
+        name: Verificar marcadores de merge conflict
+      - id: check-added-large-files
+        name: Verificar archivos grandes
+        args: ['--maxkb=1000']
+      - id: detect-private-key
+        name: Detectar claves privadas
+      - id: check-case-conflict
+        name: Verificar conflictos de mayúsculas/minúsculas
+
+  # Formateo de código Python
+  - repo: https://github.com/psf/black
+    rev: 24.1.1
+    hooks:
+      - id: black
+        name: Formatear código con Black
+        language_version: python3.11
+        args: [--line-length=100]
+
+  # Ordenamiento de imports
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        name: Ordenar imports con isort
+        args: [--profile=black, --line-length=100]
+
+  # Linting con flake8
+  - repo: https://github.com/pycqa/flake8
+    rev: 7.0.0
+    hooks:
+      - id: flake8
+        name: Linting con flake8
+        args: [--max-line-length=100, --extend-ignore=E203,W503]
+        additional_dependencies: [flake8-docstrings, flake8-import-order]
+
+  # Análisis estático con pylint
+  - repo: local
+    hooks:
+      - id: pylint
+        name: Análisis estático con pylint
+        entry: uv run pylint
+        language: system
+        types: [python]
+        args: [--rcfile=pyproject.toml]
+
+  # Type checking con mypy
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.8.0
+    hooks:
+      - id: mypy
+        name: Type checking con mypy
+        additional_dependencies: [types-all]
+        args: [--config-file=pyproject.toml]
+
+  # Tests con pytest (solo obligatorio en main)
+  - repo: local
+    hooks:
+      - id: pytest
+        name: Ejecutar tests con pytest
+        entry: bash
+        language: system
+        types: [python]
+        pass_filenames: false
+        args: [-c, '
+          # Verificar si estamos en main o si se fuerza la ejecución
+          BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
+          if [ "$BRANCH" = "main" ] || [ "$SKIP_TESTS" != "1" ]; then
+            echo "🧪 Ejecutando tests (rama: $BRANCH)..."
+            uv run pytest --tb=short -v
+          else
+            echo "⏭️  Tests omitidos (rama: $BRANCH, SKIP_TESTS=1)"
+            echo "⚠️  Recuerda ejecutar tests antes de merge a main"
+          fi
+        ']
+
+  # Validación de secretos y datos sensibles
+  - repo: local
+    hooks:
+      - id: check-env-secrets
+        name: Verificar que no se commiteen secretos del .env
+        entry: python
+        language: system
+        args:
+          - -c
+          - |
+            import sys
+            import re
+            from pathlib import Path
+            
+            files = [f for f in sys.argv[1:] if f.endswith(('.py', '.md', '.yml', '.yaml'))]
+            # Excluir archivos de test y documentación
+            files = [f for f in files if not f.startswith('tests/') and 'test_' not in f]
+            
+            # Patrones solo para archivos .env (que no deberían estar en git)
+            env_patterns = [
+              r'TAIGA_PASSWORD=(?!.*example|.*placeholder|.*your_password)',
+              r'TAIGA_USERNAME=(?!.*example|.*placeholder|.*your_username)',
+              r'TAIGA_AUTH_TOKEN=(?!.*example|.*placeholder|.*your_token|.*eyJ0eXAi)',
+            ]
+            
+            violations = []
+            for file in files:
+              try:
+                with open(file, 'r', encoding='utf-8') as f:
+                  content = f.read()
+                  # Solo verificar patrones de .env en archivos que no sean .env.example
+                  if '.env' in file and 'example' not in file:
+                    for pattern in env_patterns:
+                      if re.search(pattern, content, re.IGNORECASE):
+                        violations.append(f'{file}: Contiene credenciales reales')
+              except Exception:
+                pass
+            
+            if violations:
+              print('❌ SECRETOS DETECTADOS:')
+              for v in violations:
+                print(f'  {v}')
+              sys.exit(1)
+            print('✅ No se detectaron secretos')
+        types: [text]
+
+  # Validación de datos de usuario reales
+  - repo: local
+    hooks:
+      - id: check-real-user-data
+        name: Verificar que no se commiteen datos de usuario reales
+        entry: python
+        language: system
+        args:
+          - -c
+          - |
+            import sys
+            import re
+            files = [f for f in sys.argv[1:] if f.endswith(('.py', '.md', '.yml', '.yaml'))]
+            forbidden_patterns = [
+              r'fpiaggi-ext@sidom\.io',
+              r'fernandop(?!.*example)',
+              r'P3p3r1na\.',
+              r'taiga\.vuce\.gob\.ar(?!.*example)',
+            ]
+            for file in files:
+              try:
+                with open(file, 'r', encoding='utf-8') as f:
+                  content = f.read()
+                  for pattern in forbidden_patterns:
+                    if re.search(pattern, content):
+                      print(f'❌ DATOS REALES DETECTADOS en {file}')
+                      sys.exit(1)
+              except Exception:
+                pass
+            print('✅ No se detectaron datos de usuario reales')
+        types: [text]
+
+  # Validación de formato de commit
+  - repo: local
+    hooks:
+      - id: validate-commit-format
+        name: Validar formato Conventional Commits
+        entry: bash
+        language: system
+        stages: [commit-msg]
+        args: [-c, '
+          COMMIT_MSG_FILE=$1
+          COMMIT_MSG=$(cat "$COMMIT_MSG_FILE")
+          
+          # Patrón para Conventional Commits
+          if ! echo "$COMMIT_MSG" | grep -qE "^(feat|fix|docs|style|refactor|test|chore|perf|ci|build)(\(.+\))?: .+"; then
+            echo "❌ FORMATO DE COMMIT INVÁLIDO"
+            echo ""
+            echo "Formato: tipo(ámbito): descripción"
+            echo "Tipos: feat, fix, docs, style, refactor, test, chore, perf, ci, build"
+            echo ""
+            echo "Ejemplos:"
+            echo "  feat(auth): agregar soporte para tokens"
+            echo "  fix(client): corregir timeout"
+            echo "  docs: actualizar README"
+            exit 1
+          fi
+          
+          echo "✅ Formato válido"
+        ', --]
+        pass_filenames: true
+
+  # Actualización automática de changelog (se ejecuta en prepare-commit-msg)
+  - repo: local
+    hooks:
+      - id: update-changelog
+        name: Actualizar CHANGELOG.md automáticamente
+        entry: bash
+        language: system
+        stages: [prepare-commit-msg]
+        args: [-c, '
+          COMMIT_MSG_FILE=$1
+          COMMIT_SOURCE=$2
+          
+          # Solo procesar commits normales (no merges, ammends, etc)
+          if [ -n "$COMMIT_SOURCE" ]; then
+            exit 0
+          fi
+          
+          # Leer mensaje del commit
+          COMMIT_MSG=$(cat "$COMMIT_MSG_FILE")
+          
+          # Validar formato Conventional Commits
+          if ! echo "$COMMIT_MSG" | grep -qE "^(feat|fix|docs|style|refactor|test|chore|perf|ci|build)(\(.+\))?: .+"; then
+            echo "⚠️  Commit no sigue formato convencional, saltando changelog"
+            exit 0
+          fi
+          
+          # Extraer tipo y descripción
+          TYPE=$(echo "$COMMIT_MSG" | sed -E "s/^([a-z]+)(\(.+\))?: .*/\1/")
+          DESC=$(echo "$COMMIT_MSG" | sed -E "s/^[a-z]+(\(.+\))?: (.+)/\2/")
+          
+          # Determinar sección
+          case "$TYPE" in
+            feat) SECTION="Added" ;;
+            fix) SECTION="Fixed" ;;
+            *) SECTION="Changed" ;;
+          esac
+          
+          # Actualizar CHANGELOG.md
+          if [ -f "CHANGELOG.md" ]; then
+            # Crear entrada
+            ENTRY="- $DESC"
+            
+            # Buscar sección Unreleased y agregar entrada
+            if grep -q "## \[Unreleased\]" CHANGELOG.md; then
+              # Verificar si la sección existe
+              if grep -A 20 "## \[Unreleased\]" CHANGELOG.md | grep -q "### $SECTION"; then
+                # Agregar a sección existente
+                sed -i "/### $SECTION/a $ENTRY" CHANGELOG.md
+              else
+                # Crear nueva sección después de Unreleased
+                sed -i "/## \[Unreleased\]/a \\\n### $SECTION\n$ENTRY" CHANGELOG.md
+              fi
+              
+              git add CHANGELOG.md
+              echo "✅ CHANGELOG.md actualizado: $ENTRY"
+            fi
+          fi
+        ', --]
+        pass_filenames: true
+
+# Configuración global
+default_stages: [commit]
+fail_fast: false

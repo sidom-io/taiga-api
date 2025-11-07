@@ -1,0 +1,247 @@
+# GitLab CI/CD Pipeline para Taiga FastAPI UV
+# Este pipeline garantiza que solo código de calidad llegue a main
+
+stages:
+  - validate
+  - test
+  - security
+  - deploy
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  UV_CACHE_DIR: "$CI_PROJECT_DIR/.cache/uv"
+
+# Cache para acelerar builds
+cache:
+  paths:
+    - .cache/pip
+    - .cache/uv
+    - .venv/
+
+# Template base para jobs de Python
+.python_base: &python_base
+  image: python:3.11-slim
+  before_script:
+    - apt-get update && apt-get install -y curl
+    - curl -LsSf https://astral.sh/uv/install.sh | sh
+    - export PATH="$HOME/.cargo/bin:$PATH"
+    - uv sync --dev
+  cache:
+    paths:
+      - .cache/pip
+      - .cache/uv
+      - .venv/
+
+# ==================== STAGE: VALIDATE ====================
+
+lint:flake8:
+  <<: *python_base
+  stage: validate
+  script:
+    - echo "🔍 Ejecutando linting con flake8..."
+    - uv run flake8 app/ --max-line-length=100 --extend-ignore=E203,W503
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "develop"
+
+lint:pylint:
+  <<: *python_base
+  stage: validate
+  script:
+    - echo "🔍 Ejecutando análisis estático con pylint..."
+    - uv run pylint app/ --rcfile=pyproject.toml
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "develop"
+
+format:check:
+  <<: *python_base
+  stage: validate
+  script:
+    - echo "🎨 Verificando formato de código..."
+    - uv run black --check --diff app/
+    - uv run isort --check-only --diff app/
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "develop"
+
+type:check:
+  <<: *python_base
+  stage: validate
+  script:
+    - echo "🔍 Verificando tipos con mypy..."
+    - uv run mypy app/ --config-file=pyproject.toml
+  allow_failure: true  # Permitir fallo temporal mientras se mejora el typing
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "develop"
+
+# ==================== STAGE: TEST ====================
+
+test:unit:
+  <<: *python_base
+  stage: test
+  script:
+    - echo "🧪 Ejecutando tests unitarios..."
+    - uv run pytest tests/ -v --cov=app --cov-report=xml --cov-report=term
+  coverage: '/TOTAL.*\s+(\d+%)$/'
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+    paths:
+      - htmlcov/
+    expire_in: 1 week
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "develop"
+
+test:integration:
+  <<: *python_base
+  stage: test
+  script:
+    - echo "🔗 Ejecutando tests de integración..."
+    - uv run pytest tests/ -m integration -v
+  allow_failure: true  # Los tests de integración pueden fallar por dependencias externas
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "develop"
+
+# ==================== STAGE: SECURITY ====================
+
+security:secrets:
+  image: alpine:latest
+  stage: security
+  before_script:
+    - apk add --no-cache python3 py3-pip
+  script:
+    - echo "🔒 Verificando que no hay secretos en el código..."
+    - |
+      python3 -c "
+      import os
+      import re
+      import sys
+      
+      # Patrones de secretos a detectar
+      secret_patterns = [
+          r'TAIGA_PASSWORD=(?!.*example|.*placeholder|.*your_password)',
+          r'TAIGA_USERNAME=(?!.*example|.*placeholder|.*your_username)',
+          r'TAIGA_AUTH_TOKEN=(?!.*example|.*placeholder|.*your_token|.*eyJ0eXAi)',
+          r'password\s*=\s*[\"\']\w+',
+          r'token\s*=\s*[\"\']\w{20,}',
+      ]
+      
+      # Datos de usuario reales prohibidos
+      user_data_patterns = [
+          r'fpiaggi-ext@sidom\.io',
+          r'fernandop(?!.*example)',
+          r'P3p3r1na\.',
+          r'taiga\.vuce\.gob\.ar(?!.*example)',
+      ]
+      
+      all_patterns = secret_patterns + user_data_patterns
+      violations = []
+      
+      for root, dirs, files in os.walk('.'):
+          # Excluir directorios
+          dirs[:] = [d for d in dirs if not d.startswith('.') and d not in ['__pycache__', 'node_modules']]
+          
+          for file in files:
+              if file.endswith(('.py', '.md', '.yml', '.yaml', '.json', '.toml')):
+                  filepath = os.path.join(root, file)
+                  try:
+                      with open(filepath, 'r', encoding='utf-8') as f:
+                          content = f.read()
+                          for pattern in all_patterns:
+                              if re.search(pattern, content, re.IGNORECASE):
+                                  violations.append(f'{filepath}: {pattern}')
+                  except Exception as e:
+                      print(f'Warning: No se pudo leer {filepath}: {e}')
+      
+      if violations:
+          print('❌ VIOLACIONES DE SEGURIDAD DETECTADAS:')
+          for violation in violations:
+              print(f'  - {violation}')
+          sys.exit(1)
+      else:
+          print('✅ No se detectaron violaciones de seguridad')
+      "
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "develop"
+
+security:dependencies:
+  <<: *python_base
+  stage: security
+  script:
+    - echo "🔒 Verificando vulnerabilidades en dependencias..."
+    - uv run pip install safety
+    - uv run safety check --json || echo "⚠️ Se encontraron vulnerabilidades, revisar manualmente"
+  allow_failure: true  # No bloquear por vulnerabilidades menores
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "develop"
+
+# ==================== STAGE: DEPLOY ====================
+
+deploy:staging:
+  <<: *python_base
+  stage: deploy
+  script:
+    - echo "🚀 Desplegando a staging..."
+    - echo "Aquí irían los comandos de despliegue a staging"
+  environment:
+    name: staging
+    url: https://staging.example.com
+  rules:
+    - if: $CI_COMMIT_BRANCH == "develop"
+
+deploy:production:
+  <<: *python_base
+  stage: deploy
+  script:
+    - echo "🚀 Desplegando a producción..."
+    - echo "Aquí irían los comandos de despliegue a producción"
+  environment:
+    name: production
+    url: https://production.example.com
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+  when: manual  # Requiere aprobación manual para producción
+
+# ==================== JOBS ESPECIALES ====================
+
+# Job que se ejecuta solo en main y falla si hay problemas críticos
+main:quality-gate:
+  <<: *python_base
+  stage: test
+  script:
+    - echo "🚪 Verificando quality gate para main..."
+    - uv run flake8 app/ --max-line-length=100 --extend-ignore=E203,W503
+    - uv run pylint app/ --rcfile=pyproject.toml --fail-under=8.0
+    - uv run pytest tests/ --cov=app --cov-fail-under=80
+    - echo "✅ Quality gate passed!"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+
+# Generar reporte de cobertura para merge requests
+coverage:report:
+  <<: *python_base
+  stage: test
+  script:
+    - uv run pytest tests/ --cov=app --cov-report=html --cov-report=term
+  artifacts:
+    paths:
+      - htmlcov/
+    expire_in: 1 week
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"

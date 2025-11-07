@@ -1,28 +1,105 @@
-# Utilidades del Proyecto
+# Punto de entrada
 
-Esta carpeta contiene recursos útiles para la configuración y uso del proyecto Taiga FastAPI.
+Esta carpeta almacena documentación y material de apoyo para diagnosticar la integración con el proyecto. Además, sirve como mapa rápido de la estructura del repositorio y contexto importante para modelos de IA y desarrolladores.
 
-## Archivos
+## Árbol del proyecto
 
-- `taiga-interface-example.png` - Captura de pantalla de la interfaz de Taiga mostrando las herramientas de desarrollador
-- `taiga-devtools-example.md` - Guía detallada para obtener tokens de autenticación
+```text
+taiga-fastapi-uv/
+├── .llms                      # Punto de entrada para LLMs (contrato)
+├── .pre-commit-config.yaml    # Configuración pre-commit hooks
+├── .gitlab-ci.yml            # Pipeline CI/CD GitLab
+├── Makefile                  # Comandos de desarrollo
+├── app/
+│   ├── __init__.py            # Marca el paquete y expone la app
+│   ├── main.py                # Entrypoint de FastAPI y rutas públicas/debug
+│   ├── schemas.py             # Modelos Pydantic usados por las rutas
+│   └── taiga_client.py        # Cliente httpx con cache de token y utilidades
+├── tests/                     # Tests del proyecto
+├── scripts/                   # Scripts de utilidad
+├── pyproject.toml             # Configuración del proyecto y dependencias
+├── README.md                  # Guía principal (punto de entrada humano)
+├── uv.lock                    # Resolución exacta de dependencias (uv)
+└── util/                      # Documentación técnica (territorio LLM)
+    ├── README.md              # Este archivo (mantenido por humanos)
+    ├── DEVELOPMENT.md         # Guía completa de desarrollo (creada por LLM)
+    ├── taiga-devtools-example.md  # Procedimiento para extraer tokens (LLM)
+    └── taiga_token_example.jpg    # Captura con headers de autorización
+```
 
-## Cómo usar las imágenes
+## Archivos en esta carpeta
 
-Las imágenes en esta carpeta se referencian en el README principal para ayudar a los usuarios a:
+**`README.md`** - Este archivo (mantenido por humanos)  
+**`system-overview.md`** - Visión general del sistema integrado  
+**`DEVELOPMENT.md`** - Guía completa de desarrollo  
+**`commit-guidelines.md`** - Guías de commits y versionado  
+**`taiga-devtools-example.md`** - Cómo extraer tokens del navegador  
+**`taiga_token_example.jpg`** - Captura de pantalla con headers de autorización  
 
-1. Entender la interfaz de Taiga
-2. Localizar las herramientas de desarrollador
-3. Extraer tokens de autenticación
-4. Configurar correctamente el proyecto
+### Nota para Desarrolladores
+- **Humanos**: Tienen la última palabra sobre toda la documentación en `util/`
+- **LLMs**: Deben pedir autorización antes de crear documentación técnica aquí
+- **Estilo**: Documentación clara y profesional con uso mínimo de emojis
 
-## Actualizar imágenes
+## Contexto Importante del Proyecto
 
-Para actualizar las capturas de pantalla:
+### Propósito
+Servicio FastAPI asíncrono que se autentica contra Taiga y permite crear tareas mediante un endpoint REST.
 
-1. Toma una nueva captura mostrando las herramientas de desarrollador
-2. Guárdala como `taiga-interface-example.png`
-3. Asegúrate de que muestre claramente:
-   - La pestaña Network abierta
-   - Requests a `/api/v1/`
-   - Headers con Authorization token
+### Tecnologías Clave
+- **Python 3.11+**: Lenguaje base con soporte para async/await
+- **FastAPI**: Framework web asíncrono con documentación automática
+- **httpx**: Cliente HTTP asíncrono para integración con Taiga API
+- **uv**: Gestor de dependencias moderno y rápido
+- **Pydantic**: Validación y serialización de datos
+
+### Configuración Crítica
+1. **Autenticación**: Token de sesión del navegador (método recomendado)
+2. **URL Base**: Debe terminar con `/` (ej: `https://taiga.example.com/api/v1/`)
+3. **Puerto**: 8000 por defecto (configurable via UVICORN_PORT)
+4. **Diagnóstico**: Endpoints `/debug/*` para troubleshooting
+
+### Reglas de Desarrollo (Ver .llms)
+- ❌ NO commitear datos del .env
+- ❌ NO usar credenciales reales en ejemplos
+- ❌ NO permitir commits que no pasen tests en main
+- ✅ Usar pre-commit hooks para validación
+- ✅ Mantener cobertura de tests
+- ✅ Seguir estándares de código (flake8, pylint)
+
+## Uso recomendado
+
+### Para Humanos (Desarrolladores)
+1. **Punto de entrada**: Leer `README.md` principal del proyecto
+2. **Diagnóstico de tokens**: Seguir la guía (`taiga-devtools-example.md`) con la captura de ejemplo
+3. **Desarrollo avanzado**: Consultar `DEVELOPMENT.md` para flujo completo
+4. **Onboarding**: Este README como referencia rápida de estructura
+
+### Para LLMs y Agentes
+1. **Punto de entrada**: Leer `.llms` para reglas y contexto
+2. **Documentación**: Crear archivos técnicos solo en `util/`
+3. **Restricción**: NO modificar README.md (territorio humano)
+4. **Actualizaciones**: Mantener sincronización con estructura del proyecto
+
+### Contrato de Separación
+- **Humanos** ↔ `README.md` (puntos de entrada, documentación de usuario)
+- **LLMs** ↔ `util/` + `.llms` (documentación técnica, guías de desarrollo)
+- **Respeto mutuo**: Cada parte mantiene su territorio
+
+## Comandos Esenciales
+
+```bash
+# Instalación inicial
+uv sync
+
+# Desarrollo local
+uv run uvicorn app.main:app --reload
+
+# Tests y validación
+uv run pytest
+uv run flake8 app/
+uv run pylint app/
+
+# Pre-commit (después de instalación)
+pre-commit run --all-files
+```

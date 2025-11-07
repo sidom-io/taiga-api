@@ -2,6 +2,15 @@
 
 Servicio FastAPI asíncrono que se autentica contra Taiga y permite crear tareas mediante un endpoint REST.
 
+## Índice
+
+- [Requisitos previos](#requisitos-previos)
+- [Configuración](#configuración)
+- [Solución de Problemas de Autenticación](#solución-de-problemas-de-autenticación)
+- [Instalación y Ejecución](#instalación-de-dependencias)
+- [Endpoints Disponibles](#endpoint-disponible)
+- [Recursos Adicionales](#recursos-adicionales)
+
 ## Requisitos previos
 
 - Python 3.11 o superior
@@ -16,7 +25,9 @@ Servicio FastAPI asíncrono que se autentica contra Taiga y permite crear tareas
 
 2. **Configura la autenticación** (elige una opción):
 
-### Opción 1: Token de Sesión del Navegador (Recomendado)
+### Opción 1: Token de API o Sesión (Recomendado)
+
+#### Método A: Token de API desde la Interfaz Web
 
 1. Ve a tu instancia de Taiga: https://tu-instancia-taiga.com
 2. Inicia sesión con tu usuario y contraseña
@@ -25,6 +36,20 @@ Servicio FastAPI asíncrono que se autentica contra Taiga y permite crear tareas
 5. Busca la sección "API" o "Application Tokens"
 6. Genera un nuevo token de aplicación
 7. Agrega el token al archivo `.env`:
+
+```bash
+TAIGA_AUTH_TOKEN=tu_token_de_api_aqui
+```
+
+> ** Importante**: Si no encuentras la opción "API" o "Application Tokens" en tu perfil, consulta con tu administrador de Taiga. Esta funcionalidad puede estar deshabilitada en tu instancia.
+
+#### Método B: Token de Sesión del Navegador (Alternativo)
+
+Si no tienes acceso a tokens de API en la interfaz web, puedes extraer el token de sesión desde las herramientas de desarrollador del navegador.
+
+Sigue las instrucciones detalladas en la sección "Solución de Problemas de Autenticación" más abajo para obtener el token.
+
+Una vez que tengas el token, agrégalo al archivo `.env`:
 
 ```bash
 TAIGA_AUTH_TOKEN=tu_token_de_sesion_aqui
@@ -45,7 +70,11 @@ TAIGA_PASSWORD=tu_contraseña
 
 Si ves el error `"No active account found with the given credentials"`, significa que aunque puedas acceder a la interfaz web de Taiga, las credenciales de usuario/contraseña no funcionan para la API.
 
-### Solución: Obtener Token de Sesión del Navegador
+### Solución: Obtener Token de Autenticación
+
+**Primero intenta el Método A** (Token de API desde la interfaz web). Si no tienes esa opción disponible, usa el **Método B** (Token de sesión del navegador).
+
+#### Método B: Extraer Token de Sesión del Navegador
 
 Sigue estos pasos para obtener un token válido:
 
@@ -90,7 +119,7 @@ Sigue estos pasos para obtener un token válido:
 
 ![Ejemplo de interfaz de Taiga](util/taiga_token_example.jpg)
 
-*La imagen muestra la interfaz de Taiga donde puedes acceder a las herramientas de desarrollador*
+*La imagen muestra la interfaz de Taiga donde puedes acceder a las herramientas de desarrollador para extraer el token de autenticación*
 
 #### 6. Verifica que Funciona
 
@@ -99,7 +128,7 @@ Sigue estos pasos para obtener un token válido:
 uv run uvicorn app.main:app --reload
 
 # En otra terminal, prueba la autenticación
-curl -X POST "http://localhost:8001/debug/auth"
+curl -X POST "http://localhost:8000/debug/auth"
 ```
 
 Deberías ver:
@@ -118,43 +147,151 @@ Si sigues teniendo problemas:
 
 1. **Ejecuta el diagnóstico de autenticación**:
    ```bash
-   curl -X POST "http://localhost:8001/debug/auth"
+   curl -X POST "http://localhost:8000/debug/auth"
    ```
 
 2. **Verifica el estado del cliente**:
    ```bash
-   curl -X GET "http://localhost:8001/debug/state"
+   curl -X GET "http://localhost:8000/debug/state"
    ```
 
 3. **Prueba la conexión**:
    ```bash
-   curl -X GET "http://localhost:8001/debug/connection"
+   curl -X GET "http://localhost:8000/debug/connection"
    ```
 
-### Errores Comunes
+### Errores Comunes y Soluciones
 
-- **"No active account found with the given credentials"**: Las credenciales de usuario/contraseña no funcionan para la API → Usa token de sesión
-- **"invalid_credentials"**: Usuario o contraseña incorrectos → Verifica credenciales web
-- **"Se requiere autenticación"**: Token inválido o expirado → Obtén un nuevo token del navegador
-- **Error 404 en API**: URL incorrecta → Asegúrate de que `TAIGA_BASE_URL` termine con `/`
+| Error | Causa | Solución |
+|-------|-------|----------|
+| `"No active account found with the given credentials"` | Las credenciales de usuario/contraseña no funcionan para la API | Usa token de API (Método A) o token de sesión del navegador (Método B) |
+| `"invalid_credentials"` | Usuario o contraseña incorrectos | Verifica que puedas iniciar sesión en la interfaz web |
+| `"Se requiere autenticación"` | Token inválido o expirado | Obtén un nuevo token del navegador |
+| `Error 404 en API` | URL base incorrecta | Asegúrate de que `TAIGA_BASE_URL` termine con `/` |
+| `Connection refused` | Servidor no iniciado | Ejecuta `uv run uvicorn app.main:app --reload` |
+| `Module not found` | Dependencias no instaladas | Ejecuta `uv sync` |
+
+## Flujo de Trabajo de Desarrollo
+
+### Comandos Principales
+
+```bash
+# Configuración inicial
+make setup-dev              # Configurar entorno completo
+make install                 # Solo instalar dependencias
+
+# Desarrollo
+make dev                     # Iniciar servidor de desarrollo
+make test                    # Ejecutar todos los tests
+make lint                    # Linting (flake8 + pylint)
+make format                  # Formatear código (black + isort)
+
+# Validación completa (como CI)
+make ci                      # Ejecutar todas las validaciones
+
+# Utilidades
+make clean                   # Limpiar archivos temporales
+make help                    # Ver todos los comandos disponibles
+```
+
+### Pre-commit Hooks
+
+Este proyecto usa pre-commit hooks para garantizar calidad del código:
+
+- **Formato**: Black + isort
+- **Linting**: Flake8 + Pylint  
+- **Tests**: Pytest (obligatorio en `main`, opcional en otras ramas)
+- **Seguridad**: Detección de secretos y datos personales
+- **Tipos**: MyPy (opcional)
+
+#### Ejecución de Hooks
+
+```bash
+# Ejecutar todos los hooks (incluye tests)
+make pre-commit
+
+# Ejecutar hooks omitiendo tests (útil en ramas de desarrollo)
+make pre-commit-skip-tests
+
+# Los tests son obligatorios solo en main
+# En otras ramas puedes omitirlos con: SKIP_TESTS=1
+```
+
+#### Commits Convenientes
+
+```bash
+# Commit work-in-progress (omite tests)
+make commit-wip
+
+# Commit con todas las validaciones
+make commit-safe
+
+# Commit manual omitiendo tests
+SKIP_TESTS=1 git commit -m "WIP: mensaje"
+```
+
+### Reglas de Desarrollo
+
+⚠️ **IMPORTANTE**: Lee el archivo `.llms` para entender las reglas imperantes del proyecto.
+
+**Reglas críticas:**
+- ❌ NO commitear datos del `.env`
+- ❌ NO usar credenciales reales en ejemplos  
+- ❌ NO permitir commits que no pasen tests en `main`
+- ✅ Todos los commits deben pasar pre-commit hooks
+- ✅ Mantener cobertura de tests > 80%
+
+**Flexibilidad en ramas de desarrollo:**
+- ✅ Puedes omitir tests en ramas feature/develop con `SKIP_TESTS=1`
+- ✅ Tests obligatorios solo al hacer merge a `main`
+- ✅ Usa `make commit-wip` para commits de trabajo en progreso
 
 ## Recursos Adicionales
 
 - **Carpeta `util/`**: Contiene capturas de pantalla y guías adicionales para la configuración
+- **Guía de desarrollo**: Ver `util/DEVELOPMENT.md` para documentación detallada de desarrollo
 - **Herramientas de diagnóstico**: Usa los endpoints `/debug/*` para troubleshooting
-- **Documentación de API**: Disponible en `http://localhost:8001/docs` cuando el servidor esté ejecutándose
+- **Documentación de API**: Disponible en `http://localhost:8000/docs` cuando el servidor esté ejecutándose
+- **Soporte de administrador**: Si no encuentras opciones de API en tu perfil, contacta al administrador de tu instancia de Taiga
 
-## Instalación de dependencias
+### Para Desarrolladores y Modelos de IA
+- **Archivo `.llms`**: Punto de entrada y reglas para modelos de IA
+- **Contrato LLM-Humano**: Los LLMs crean documentación en `util/`, los humanos mantienen README.md
+- **CHANGELOG.md**: Registro automático de cambios del proyecto
+- **Guías de commits**: Ver `util/commit-guidelines.md` para formato de commits
 
-Ejecutá:
+## Instalación y Configuración de Desarrollo
+
+### Instalación Rápida
 
 ```bash
-uv sync
+# Instalar dependencias
+uv sync --dev
+
+# Configurar entorno de desarrollo completo (recomendado)
+./scripts/setup-dev.sh
+```
+
+### Instalación Manual
+
+```bash
+# 1. Instalar dependencias
+uv sync --dev
+
+# 2. Instalar pre-commit hooks
+uv run pre-commit install
+
+# 3. Ejecutar validaciones iniciales
+make ci
 ```
 
 ## Ejecución en desarrollo
 
 ```bash
+# Opción 1: Usando make (recomendado)
+make dev
+
+# Opción 2: Comando directo
 uv run uvicorn app.main:app --reload
 ```
 

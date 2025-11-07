@@ -5,7 +5,14 @@ from typing import Annotated, List, Union
 from dotenv import find_dotenv, load_dotenv
 from fastapi import Depends, FastAPI, HTTPException, Query
 
-from app.schemas import TaskCreateRequest, TaskResponse, UserStoryResponse
+from app.markdown_parser import MarkdownTaskParser
+from app.schemas import (
+    BulkTaskFromMarkdownRequest,
+    BulkTaskResponse,
+    TaskCreateRequest,
+    TaskResponse,
+    UserStoryResponse,
+)
 from app.taiga_client import TaigaClient, TaigaClientError
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -225,6 +232,16 @@ async def update_task(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
+@app.delete("/tasks/{task_id}")
+async def delete_task(task_id: int, taiga_client: TaigaClientDep) -> dict:
+    """Elimina una tarea."""
+    try:
+        await taiga_client.delete_task(task_id)
+        return {"deleted": True, "task_id": task_id}
+    except TaigaClientError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
 @app.get("/projects/{project_id}/task-statuses")
 async def get_task_statuses(
     project_id: Union[int, str], taiga_client: TaigaClientDep
@@ -245,3 +262,186 @@ async def get_userstory_statuses(
         return await taiga_client.get_userstory_statuses(project_id)
     except TaigaClientError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.get("/docs/bulk-markdown-example")
+async def get_bulk_markdown_example() -> dict:
+    """
+    Retorna un ejemplo de cómo crear tareas desde markdown.
+
+    Incluye:
+    - Formato del markdown esperado
+    - Ejemplo de request completo
+    - Explicación de conversión de referencias
+    """
+    return {
+        "description": "Crea múltiples tareas en Taiga desde un documento markdown",
+        "endpoint": "POST /tasks/bulk-from-markdown",
+        "markdown_format": {
+            "description": "Formato esperado del markdown",
+            "example": """### 1. Título de la tarea
+
+**Componente**: Backend - API
+
+**Descripción**:
+Descripción detallada de lo que hace la tarea.
+
+**Criterios de aceptación**:
+- Criterio 1
+- Criterio 2
+- Criterio 3
+
+**Dependencias**: Tarea 1, HU #130, Sistema D3
+
+---
+
+### 2. Otra tarea
+
+**Componente**: Frontend - UI
+
+**Descripción**:
+Otra descripción.
+
+**Criterios de aceptación**:
+- Criterio A
+- Criterio B
+
+**Dependencias**: Tarea 1""",
+        },
+        "request_example": {
+            "markdown": "### 1. Modelo de datos\\n**Componente**: Backend\\n...",
+            "project": "dai-declaracion-aduanera-integral",
+            "user_story": 88,
+            "taiga_base_url": "https://taiga.vuce-sidom.gob.ar",
+        },
+        "reference_conversion": {
+            "description": "Referencias que se convierten automáticamente en links de Taiga",
+            "examples": [
+                {
+                    "input": "Tarea 1",
+                    "output": "[Tarea #1](https://taiga.../task/1)",
+                },
+                {
+                    "input": "HU #130",
+                    "output": "[HU #130](https://taiga.../us/130)",
+                },
+                {
+                    "input": "US #88",
+                    "output": "[US #88](https://taiga.../us/88)",
+                },
+                {"input": "#130", "output": "[#130](https://taiga.../us/130)"},
+            ],
+        },
+        "automatic_tags": {
+            "description": "Tags extraídos automáticamente del componente",
+            "examples": [
+                {"component": "Backend - API", "tags": ["backend", "api"]},
+                {"component": "Frontend - UI", "tags": ["frontend", "ui"]},
+                {"component": "Testing - E2E", "tags": ["testing"]},
+                {
+                    "component": "Backend - Integración",
+                    "tags": ["backend", "integration"],
+                },
+            ],
+        },
+        "response_example": {
+            "total_tasks": 2,
+            "created_tasks": [
+                {
+                    "id": 150,
+                    "ref": 150,
+                    "subject": "Modelo de datos de configuración de menú",
+                    "project": 3,
+                    "user_story": 88,
+                    "tags": ["backend"],
+                },
+                {
+                    "id": 151,
+                    "ref": 151,
+                    "subject": "API de consulta de menú según permisos",
+                    "project": 3,
+                    "user_story": 88,
+                    "tags": ["backend", "api"],
+                },
+            ],
+            "errors": [],
+        },
+    }
+
+
+@app.post("/tasks/bulk-from-markdown", response_model=BulkTaskResponse)
+async def create_tasks_from_markdown(
+    payload: BulkTaskFromMarkdownRequest, taiga_client: TaigaClientDep
+) -> BulkTaskResponse:
+    """
+    Crea múltiples tareas desde un documento markdown y actualiza la descripción
+    de la historia de usuario con los diagramas.
+
+    El markdown debe tener el formato:
+    ### 1. Título de la tarea
+    **Componente**: Backend - API
+    **Descripción**: ...
+    **Criterios de aceptación**: ...
+    **Dependencias**: ...
+    """
+    # Resolver project slug
+    try:
+        if isinstance(payload.project, str):
+            project_slug = payload.project
+        else:
+            project_data = await taiga_client.get_project(payload.project)
+            project_slug = project_data.get("slug", str(payload.project))
+    except TaigaClientError as exc:
+        raise HTTPException(status_code=400, detail=f"Proyecto no encontrado: {exc}") from exc
+
+    # Obtener la historia de usuario para actualizar su descripción
+    try:
+        user_story = await taiga_client.get_user_story(payload.user_story)
+
+        # Extraer la parte del markdown antes de "## Tareas Propuestas"
+        # Esto incluye descripción, contexto y diagramas
+        description_parts = payload.markdown.split("## Tareas Propuestas")
+        if len(description_parts) > 0:
+            us_description = description_parts[0].strip()
+
+            # Actualizar la historia con los diagramas
+            await taiga_client.update_user_story(
+                user_story_id=payload.user_story,
+                description=us_description,
+                version=user_story.get("version"),
+            )
+    except TaigaClientError as exc:
+        # No fallar si no se puede actualizar la historia, solo advertir
+        print(f"Advertencia: No se pudo actualizar la historia: {exc}")
+
+    # Parsear markdown
+    parser = MarkdownTaskParser(taiga_base_url=payload.taiga_base_url)
+    tasks_data = parser.parse_tasks(payload.markdown, project_slug)
+
+    if not tasks_data:
+        raise HTTPException(status_code=400, detail="No se encontraron tareas en el markdown")
+
+    # Crear tareas
+    created_tasks = []
+    errors = []
+
+    for idx, task_data in enumerate(tasks_data, 1):
+        try:
+            task = await taiga_client.create_task(
+                project=payload.project,
+                subject=task_data["subject"],
+                user_story=payload.user_story,
+                description=task_data["description"],
+                # tags=task_data.get("tags"),  # Taiga no acepta tags en creación
+            )
+            created_tasks.append(TaskResponse(**task))
+        except TaigaClientError as exc:
+            errors.append(
+                {
+                    "task_number": idx,
+                    "subject": task_data["subject"],
+                    "error": str(exc),
+                }
+            )
+
+    return BulkTaskResponse(total_tasks=len(tasks_data), created_tasks=created_tasks, errors=errors)

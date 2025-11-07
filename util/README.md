@@ -31,6 +31,7 @@ taiga-fastapi-uv/
 
 **`README.md`** - Este archivo (mantenido por humanos)
 **`project-status.md`** - Estado actual del proyecto y métricas
+**`ejemplo-desglose-tareas.md`** - Ejemplo real de cómo desglosar HU en tareas (HU #129)
 **`system-overview.md`** - Visión general del sistema integrado
 **`vuce-sidom-architecture.md`** - Arquitectura completa del proyecto VUCE-SIDOM DAI
 **`kit-maria-integration.md`** - Integración con KIT Malvina/Maria (bloqueante crítico)

@@ -198,6 +198,7 @@ class TaigaClient:
         subject: str,
         user_story: Optional[int] = None,
         description: Optional[str] = None,
+        tags: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
         client = await self._ensure_client()
         project_id = await self._resolve_project(project)
@@ -208,6 +209,8 @@ class TaigaClient:
             payload["user_story"] = user_story
         if description:
             payload["description"] = description
+        if tags:
+            payload["tags"] = tags
 
         headers = self._build_headers(token)
 
@@ -255,6 +258,40 @@ class TaigaClient:
             raise TaigaClientError(
                 f"No se pudo obtener la historia {user_story_id}: {exc}"
             ) from exc
+        self._record_response(response)
+
+        if response.status_code != 200:
+            raise TaigaClientError(self._parse_error(response))
+
+        return self._json_or_error(response)
+
+    async def update_user_story(
+        self,
+        user_story_id: int,
+        description: str = None,
+        version: int = None,
+    ) -> Dict[str, Any]:
+        """Actualiza una historia de usuario."""
+        client = await self._ensure_client()
+        token = await self._get_token()
+        headers = self._build_headers(token)
+
+        payload = {}
+        if description is not None:
+            payload["description"] = description
+        if version is not None:
+            payload["version"] = version
+
+        if not payload:
+            raise TaigaClientError("Se requiere al menos un campo para actualizar")
+
+        try:
+            response = await client.patch(
+                f"userstories/{user_story_id}", headers=headers, json=payload
+            )
+        except httpx.RequestError as exc:
+            raise TaigaClientError(f"No se pudo actualizar historia: {exc}") from exc
+
         self._record_response(response)
 
         if response.status_code != 200:
@@ -510,6 +547,24 @@ class TaigaClient:
             raise TaigaClientError(self._parse_error(response))
 
         return self._json_list_or_error(response)
+
+    async def delete_task(self, task_id: int) -> bool:
+        """Elimina una tarea."""
+        client = await self._ensure_client()
+        token = await self._get_token()
+        headers = self._build_headers(token)
+
+        try:
+            response = await client.delete(f"tasks/{task_id}", headers=headers)
+        except httpx.RequestError as exc:
+            raise TaigaClientError(f"No se pudo eliminar tarea: {exc}") from exc
+
+        self._record_response(response)
+
+        if response.status_code not in (200, 204):
+            raise TaigaClientError(self._parse_error(response))
+
+        return True
 
     async def update_task(
         self,

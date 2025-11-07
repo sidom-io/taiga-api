@@ -37,19 +37,29 @@
 - Carga TXT: Componente + Parser + Job asíncrono
 - Creación manual: Formulario + Endpoint + Sincronización catálogos
 
-#### Componentes Pendientes de Desglose (3 historias)
+#### Componentes Completados (HU #129)
 
-**Menú Lateral (HU #129)**
-- Historia creada sin tareas
-- Requiere: Modelo + API + Componente + Caché
+**Menú Lateral (HU #129)** - 8 tareas creadas
+- Modelo de datos de configuración
+- API de consulta según permisos
+- Invalidación JIT de permisos
+- Componente React dinámico
+- Integración con sistema de permisos D3
+- Actualización automática al cambiar CF4
+- Tests E2E de navegación
+- Diseño de integración con Adapter RPA
 
-**Actualización Contextual (HU #130)**
-- Historia creada sin tareas
-- Requiere: API cambio CF4 + Servicio + Hook React + Selector
+#### Componentes Pendientes de Desglose (1 historia)
 
 **Pre-carátula PASO 1 (HU #125)**
 - Historia creada sin tareas
 - Posible duplicación con HU #23 (verificar)
+
+#### Historias Duplicadas (1)
+
+**Actualización Contextual (HU #130)**
+- Duplicada con Tarea 6 de HU #129
+- Acción: Marcar como duplicada y cerrar
 
 #### Componentes Bloqueados
 
@@ -97,10 +107,11 @@
 ## Próximos Pasos
 
 ### Corto Plazo (1-2 semanas)
-1. Desglosa las 3 historias pendientes en tareas
-2. Crea la historia faltante HU-DAI-D4-006
-3. Define mock del KIT Malvina para desarrollo
-4. Inicia desarrollo de las 16 tareas listas
+1. Verificar y desglosar HU #125 (Pre-carátula PASO 1)
+2. Marcar HU #130 como duplicada en Taiga
+3. Crear la historia faltante HU-DAI-D4-006
+4. Define mock del KIT Malvina para desarrollo
+5. Inicia desarrollo de las 24 tareas listas
 
 ### Mediano Plazo (3-4 semanas)
 1. Completa implementación de Dashboard y Notificaciones
@@ -119,20 +130,21 @@
 **Historias de Usuario**:
 - Total en Taiga: 30
 - Relacionadas con D4 Dashboard: 10
-- Con tareas definidas: 5 (50%)
-- Sin tareas: 3 (30%)
+- Con tareas definidas: 6 (60%)
+- Sin tareas: 1 (10%)
+- Duplicadas: 1 (10%)
 - Faltantes: 1 (10%)
 - Pendientes verificación: 2 (20%)
 
 **Tareas**:
-- Listas para desarrollo: 16
+- Listas para desarrollo: 24
 - Estimadas: Pendiente
 - En progreso: 0
 - Completadas: 0
 
 **Bloqueantes**:
 - Críticos: 1 (KIT Malvina)
-- Altos: 1 (Historias sin desglosar)
+- Altos: 0
 - Medios: 1 (Historia faltante)
 
 ## Recursos
@@ -140,6 +152,7 @@
 **Documentación Técnica**:
 - `util/vuce-sidom-architecture.md` - Arquitectura completa
 - `util/kit-maria-integration.md` - Integración KIT Malvina
+- `util/ejemplo-desglose-tareas.md` - Ejemplo real de desglose (HU #129)
 - `util/llm-docs-proyect/taiga-hu-tasks-mapping.md` - Mapeo HU a tareas
 
 **Datos de Taiga**:

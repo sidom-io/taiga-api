@@ -1,34 +1,46 @@
-from typing import Optional, Union
+from typing import List, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 
 
 class TaskCreateRequest(BaseModel):
-    project: Union[int, str] = Field(..., description="ID numérico o slug del proyecto")
-    subject: str = Field(..., min_length=1, description="Título de la tarea")
-    user_story: Optional[int] = Field(
-        default=None, description="ID de la user story asociada (opcional)"
-    )
-    description: Optional[str] = Field(
-        default=None, description="Descripción de la tarea (opcional)"
-    )
+    project: int | str = Field(..., description="ID o slug del proyecto")
+    subject: str = Field(..., description="Título de la tarea")
+    user_story: Optional[int] = Field(None, description="ID de la historia de usuario")
+    description: Optional[str] = Field(None, description="Descripción de la tarea")
+    status: Optional[int] = Field(None, description="ID del estado")
+    tags: Optional[List[str]] = Field(None, description="Tags de la tarea")
 
 
 class TaskResponse(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-
     id: int
+    ref: int
     subject: str
-    project: Optional[int] = None
+    project: int
     user_story: Optional[int] = None
-    ref: Optional[int] = None
+    description: Optional[str] = None
+    status: Optional[int] = None
+    tags: Optional[List[str]] = None
 
 
 class UserStoryResponse(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-
     id: int
+    ref: int
     subject: str
-    project: Optional[int] = None
-    ref: Optional[int] = None
+    project: int
     description: Optional[str] = None
+    status: Optional[int] = None
+    tags: Optional[List[str]] = None
+
+
+class BulkTaskFromMarkdownRequest(BaseModel):
+    markdown: str = Field(..., description="Contenido markdown con las tareas")
+    project: int | str = Field(..., description="ID o slug del proyecto")
+    user_story: int = Field(..., description="ID de la historia de usuario")
+    taiga_base_url: Optional[str] = Field(None, description="URL base de Taiga para generar links")
+
+
+class BulkTaskResponse(BaseModel):
+    total_tasks: int
+    created_tasks: List[TaskResponse]
+    errors: List[dict]

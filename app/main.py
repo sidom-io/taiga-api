@@ -112,6 +112,24 @@ async def list_epics(
     return epics
 
 
+@app.post("/user-stories", response_model=UserStoryResponse)
+async def create_user_story(
+    project: Annotated[Union[int, str], Query(description="ID o slug de proyecto")],
+    subject: Annotated[str, Query(description="Título de la historia")],
+    taiga_client: TaigaClientDep,
+    description: str = None,
+    tags: List[str] = None,
+) -> UserStoryResponse:
+    try:
+        story = await taiga_client.create_user_story(
+            project=project, subject=subject, description=description, tags=tags
+        )
+    except TaigaClientError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    return UserStoryResponse(**story)
+
+
 @app.get("/user-stories", response_model=List[UserStoryResponse])
 async def list_user_stories(
     project: Annotated[Union[int, str], Query(..., description="ID o slug de proyecto")],
@@ -130,6 +148,23 @@ async def list_user_stories(
 async def get_user_story(user_story_id: int, taiga_client: TaigaClientDep) -> UserStoryResponse:
     try:
         story = await taiga_client.get_user_story(user_story_id)
+    except TaigaClientError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    return UserStoryResponse(**story)
+
+
+@app.patch("/user-stories/{user_story_id}", response_model=UserStoryResponse)
+async def update_user_story(
+    user_story_id: int,
+    taiga_client: TaigaClientDep,
+    description: str = None,
+    version: int = 1,
+) -> UserStoryResponse:
+    try:
+        story = await taiga_client.update_user_story(
+            user_story_id=user_story_id, description=description, version=version
+        )
     except TaigaClientError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 

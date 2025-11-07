@@ -297,20 +297,28 @@ Para completar la integración necesitamos:
 
 ## Referencias
 
-- Diagrama de arquitectura (util/llm-docs-proyect/graficos.drawio.xml)
-- Documento de arquitectura de software (pendiente de revisión)
-- Especificación del Adapter .NET (pendiente)
+- **Diagramas de arquitectura**: `util/llm-docs-proyect/graficos.drawio.xml` (actualizado 2025-11-06)
+- **Modelo de datos completo**: `util/llm-docs-proyect/VUCE-Modelo de datos.drawio.xml`
+- **Arquitectura VUCE-SIDOM**: `util/vuce-sidom-architecture.md`
+- **Estado del proyecto**: `util/project-status.md`
+- **Documentación privada completa**: `util/llm-docs-proyect/README.md`
+- Documento de arquitectura de software (Borrador v3 - Google Drive SIDOM)
+- Especificación del Adapter .NET (pendiente de SIDOM/DGA)
 
 ## Estado Actual
 
 🔴 **BLOQUEANTE CRÍTICO** - Requiere definición urgente con el equipo de VUCE/DGA para continuar con la implementación del módulo D4.
 
 **Historias de Usuario Afectadas:**
-- HU #27 (US #66): Consulta Bultos - Requiere especificación de integración con SIM
-- HU #28 (US #67): Preguntas arancelarias - Requiere especificación de integración con KIT
+- HU #27 (US #66): PASO 5 - Consulta Bultos - Requiere especificación de integración con SIM
+- HU #28 (US #67): PASO 6 - Preguntas arancelarias - Requiere especificación de integración con KIT
+- HU #241: Pago de tributos con VEP
+- HU #251: Asociación pólizas/cauciones
+- HU #259: Liquidación y oficialización
 - Todas las operaciones de validación y cálculo de tributos
 
 **Impacto en Desarrollo:**
-- 16 tareas de Dashboard/Notificaciones pueden avanzar sin bloqueo
+- 102 tareas de D4 definidas (ver `util/llm-docs-proyect/README.md` para detalle)
 - Tareas de validación y oficialización están bloqueadas
 - Se requiere mock/stub del KIT para desarrollo paralelo
+- Dashboard, notificaciones y pasos 0-4 pueden avanzar sin bloqueo

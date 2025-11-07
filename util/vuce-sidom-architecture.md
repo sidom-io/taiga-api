@@ -90,6 +90,25 @@ Borrador → En Carga → Validando → Observada → Lista → Oficializada →
 - Gestión de mercaderías y productos
 - Nomenclatura Común del Mercosur (NCM)
 - Atributos y clasificaciones arancelarias
+- Configuración dinámica de campos según subrégimen
+
+**Modelo de Datos:**
+```mermaid
+erDiagram
+    DECLARACION ||--o{ ITEM : "contiene"
+    NCM ||--o{ ITEM : "clasifica"
+    PAIS ||--o{ ITEM : "origen/procedencia"
+    ITEM ||--o{ SUBITEM : "detalla"
+    SUBREGIMEN ||--o{ CATALOGO_CAMPO : "define campos"
+```
+
+**Entidades Principales:**
+- **NCM**: Posiciones arancelarias del Mercosur (código + descripción)
+- **ITEM**: Mercadería en la declaración con NCM, países, descripción y estado
+- **SUBITEM**: Detalle de cantidades, valores FOB y pesos netos
+- **CATALOGO_CAMPO**: Campos dinámicos por subrégimen con validaciones y versionado
+
+**Documentación Completa**: Ver `util/d5-catalogo-documentacion.md`
 
 ### D6 - Búsqueda y Reportes
 
@@ -225,7 +244,12 @@ Estos puntos requieren definición con VUCE/DGA:
 
 ## Referencias
 
-- Documento de Arquitectura de Software (Borrador v3)
-- Historias de Usuario D4 (18 HU)
-- Diagramas DrawIO (arquitectura y modelo de datos)
-- TASKs D3 (ejemplo de desglose técnico)
+- **Documento de Arquitectura de Software**: Borrador v3 (Google Drive SIDOM)
+- **Historias de Usuario D4**: 16 HU, 102 tareas (ver `util/llm-docs-proyect/README.md`)
+- **Diagramas DrawIO**:
+  - Flujos y estados: `util/llm-docs-proyect/graficos.drawio.xml` (597K)
+  - Modelo de datos: `util/llm-docs-proyect/VUCE-Modelo de datos.drawio.xml` (512K)
+- **TASKs D3**: Ejemplo de desglose técnico (Google Drive SIDOM)
+- **Documentación D5 (Catálogo)**: `util/d5-catalogo-documentacion.md`
+- **Integración KIT Malvina**: `util/kit-maria-integration.md`
+- **Estado del proyecto**: `util/project-status.md`

@@ -16,7 +16,7 @@ Este servicio es parte del proyecto **VUCE-SIDOM DAI** (Declaración Aduanera In
 
 - **D3 (Seguridad)**: Usuarios, autenticación vía Clave Fiscal ARCA, delegaciones CF4, roles y permisos
 - **D4 (DAI)**: Operaciones IMEX - Creación y gestión de declaraciones aduaneras (módulo actual)
-- **D5 (Catálogo)**: Mercaderías, NCM, productos y atributos
+- **D5 (Catálogo)**: Mercaderías, NCM (Nomenclatura Común del Mercosur), productos y atributos. Gestiona posiciones arancelarias y campos dinámicos por subrégimen
 - **D6 (Búsqueda)**: Índices, consultas guardadas y reportes
 - **D7-D8 (Documentos)**: LPCO, sobres digitales, adjuntos y firma digital
 
@@ -71,9 +71,11 @@ El módulo D4 implementa el flujo completo de declaraciones aduaneras:
 ### 3. Carga de Información
 1. **Pre-carátula**: Datos iniciales de la operación
 2. **Carátula**: Información completa (varía según subrégimen)
-3. **Ítems**: Mercaderías con posiciones arancelarias
-4. **Subítems**: Detalle de cada mercadería
+3. **Ítems**: Mercaderías con posiciones arancelarias NCM (del catálogo D5)
+4. **Subítems**: Detalle de cada mercadería (cantidad, valor FOB, peso neto)
 5. **Documentación**: Adjuntos y referencias
+
+**Nota**: Los ítems y subítems utilizan el catálogo D5 para validar posiciones arancelarias NCM y obtener campos dinámicos según el subrégimen.
 
 ### 4. Validaciones
 - Validaciones interactivas con KIT Malvina
@@ -116,7 +118,7 @@ D7-D8 (Documentos) ← almacena ← D6
 ### Dependencias Clave
 
 - **D4 depende de D3**: Autenticación, permisos y delegaciones CF4
-- **D4 depende de D5**: Catálogo de mercaderías y NCM
+- **D4 depende de D5**: Catálogo de mercaderías y NCM para validar posiciones arancelarias y obtener campos dinámicos
 - **D4 depende de KIT Malvina**: Validaciones y cálculo de tributos (⚠️ bloqueante)
 - **D4 integra con VUCE Central**: Notificaciones interorganismos
 - **D6 indexa D4 y D5**: Búsquedas y reportes
@@ -418,12 +420,25 @@ make ci           # Validación completa (simula CI)
 - **CHANGELOG.md**: Registro automático de cambios del proyecto
 - **Guías de commits**: Ver `util/commit-guidelines.md` para formato de commits
 
-### Documentación Privada
+### Documentación de Módulos
+
+- **`util/d5-catalogo-documentacion.md`**: Documentación completa del módulo D5 (Catálogo)
+  - Modelo de datos: NCM, ITEM, SUBITEM, CATALOGO_CAMPO
+  - Diagramas ER en Mermaid
+  - Relaciones entre entidades y reglas de negocio
+  - Casos de uso y validaciones principales
+
+### Documentación Privada (Google Drive SIDOM - cache local)
 
 - **`util/llm-docs-proyect/`**: Documentación privada del autor (no commiteable)
-  - Historias de Usuario D4
-  - TASKs de ejemplo D3
-  - Diagramas de arquitectura y modelo de datos
+  - **README.md**: Estado actualizado del proyecto y métricas completas (16 HU, 102 tareas)
+  - **Historias de Usuario D4**: Desgloses técnicos completos por HU
+  - **TASKs D3**: Ejemplo de desglose técnico
+  - **Diagramas DrawIO**:
+    - `graficos.drawio.xml` (597K) - Flujos, estados, épicas
+    - `VUCE-Modelo de datos.drawio.xml` (512K) - DER completo
+  - **Datos JSON de Taiga**: Snapshots de HU y tareas
+  - **Archivos bulk**: Para carga masiva en Taiga
 
 ## Instalación y Configuración
 

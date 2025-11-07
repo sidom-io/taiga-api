@@ -46,6 +46,7 @@ taiga-fastapi-uv/
     ├── ejemplo-desglose-tareas.md # Ejemplo real de desglose de HU
     ├── system-overview.md         # Visión general del sistema integrado
     ├── vuce-sidom-architecture.md # Arquitectura completa VUCE-SIDOM DAI
+    ├── d5-catalogo-documentacion.md # Documentación módulo D5 (Catálogo)
     ├── kit-maria-integration.md   # Integración con KIT Malvina/Maria
     ├── taiga-devtools-example.md  # Cómo extraer tokens del navegador
     ├── troubleshooting-uv-python.md # Resolución de errores comunes
@@ -53,7 +54,7 @@ taiga-fastapi-uv/
     │
     └── llm-docs-proyect/          # Documentación privada (en .gitignore)
         ├── README.md              # Contexto completo del proyecto VUCE-SIDOM
-        ├── graficos.drawio.xml    # Diagramas DrawIO (flujos, estados, épicas)
+        ├── graficos.drawio.xml    # Diagramas DrawIO actualizados (DER completo)
         ├── historias-d4-faltantes.md
         ├── crear-historias-en-taiga.md
         ├── ejemplo-uso-bulk-api.md
@@ -100,6 +101,10 @@ taiga-fastapi-uv/
 - **`vuce-sidom-architecture.md`** - Arquitectura completa del proyecto VUCE-SIDOM DAI
 - **`system-overview.md`** - Visión general del sistema integrado y módulos
 - **`kit-maria-integration.md`** - Integración con KIT Malvina/Maria (bloqueante crítico)
+- **`d5-catalogo-documentacion.md`** - Documentación completa del módulo D5 (Catálogo)
+  - Modelo de datos: NCM, ITEM, SUBITEM, CATALOGO_CAMPO
+  - Relaciones entre entidades y reglas de negocio
+  - Casos de uso y validaciones
 - **`ejemplo-desglose-tareas.md`** - Ejemplo real de cómo desglosar HU en tareas (HU #129)
 
 ### Guías de Desarrollo
@@ -117,7 +122,9 @@ taiga-fastapi-uv/
 
 - **`llm-docs-proyect/`** - Carpeta con documentación privada del proyecto (contenido en .gitignore)
   - Contexto completo del proyecto VUCE-SIDOM
-  - Diagramas DrawIO (flujos, estados, épicas)
+  - **graficos.drawio.xml**: Diagramas DrawIO actualizados con DER completo
+  - Historias de Usuario D4 con desgloses técnicos
+  - Datos JSON de Taiga (snapshots de HU y tareas)
   - Desgloses técnicos de historias de usuario
   - Archivos bulk para carga masiva en Taiga
   - Datos JSON exportados de Taiga

@@ -22,6 +22,7 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 - Soporte para omitir tests en ramas de desarrollo (SKIP_TESTS=1)
 
 ### Changed
+- documentar endpoints POST y PATCH para user-stories
 - implementar creación bulk de tareas desde markdown y completar HU #129
 
 Funcionalidades nuevas:

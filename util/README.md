@@ -34,6 +34,7 @@ taiga-fastapi-uv/
 **`DEVELOPMENT.md`** - Guía completa de desarrollo
 **`commit-guidelines.md`** - Guías de commits y versionado
 **`llm-workflow.md`** - Flujo de trabajo con LLM para commits profesionales
+**`troubleshooting-uv-python.md`** - Resolución de errores comunes con uv y Python 3.13
 **`taiga-devtools-example.md`** - Cómo extraer tokens del navegador
 **`taiga_token_example.jpg`** - Captura de pantalla con headers de autorización
 

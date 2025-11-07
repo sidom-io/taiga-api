@@ -20,6 +20,8 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 - Soporte para omitir tests en ramas de desarrollo (SKIP_TESTS=1)
 
 ### Changed
+- actualizar contexto del proyecto
+- agregar guía de troubleshooting para uv y Python 3.13
 - verificar funcionamiento después de fix
 - actualizar documentación con flujo de trabajo simplificado
 - Actualizada configuración de pyproject.toml con dependencias de desarrollo

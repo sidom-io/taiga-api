@@ -35,6 +35,19 @@ Eres un asistente especializado en desarrollo de código que debe seguir estrict
 - **NO se permite loggear credenciales** (excepto en Docker con variables de entorno)
 - **NO se comitean datos de usuario reales** (solo ejemplos genéricos)
 
+### 📂 Carpeta de Documentación Privada del Proyecto
+- **`util/llm-docs-proyect/`**: Carpeta bajo autoría exclusiva del humano creador del proyecto
+- **Contenido en .gitignore**: Todo el contenido de esta carpeta está excluido del repositorio
+- **Uso responsable**: Los LLMs pueden LEER esta carpeta para contexto adicional del proyecto
+- **PROHIBIDO commitear**: NUNCA se debe agregar, modificar o commitear archivos de esta carpeta
+- **PREGUNTAR ANTES**: Si un LLM necesita usar información de esta carpeta, debe:
+  1. Confirmar con el usuario que puede leer el contenido
+  2. NO copiar datos sensibles a otros archivos sin autorización
+  3. NO referenciar información privada en documentación pública
+  4. Tratar toda información como confidencial del proyecto
+- **Propósito**: Contiene documentación, notas, especificaciones y contexto privado del autor
+- **Responsabilidad**: El contenido es propiedad intelectual del autor y debe respetarse
+
 ### 🧪 Control de Calidad
 - **En main NO se permiten commits que no pasen los tests**
 - **Todos los commits deben pasar validaciones de pre-commit**

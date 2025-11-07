@@ -422,6 +422,24 @@ class TaigaClient:
             raise TaigaClientError("La respuesta de Taiga no contiene una lista JSON")
         return data
 
+    async def list_projects(self) -> List[Dict[str, Any]]:
+        """Lista todos los proyectos accesibles por el usuario."""
+        client = await self._ensure_client()
+        token = await self._get_token()
+        headers = self._build_headers(token)
+
+        try:
+            response = await client.get("projects", headers=headers)
+        except httpx.RequestError as exc:
+            raise TaigaClientError(f"No se pudo listar proyectos: {exc}") from exc
+
+        self._record_response(response)
+
+        if response.status_code != 200:
+            raise TaigaClientError(self._parse_error(response))
+
+        return self._json_list_or_error(response)
+
     @staticmethod
     def _parse_error(response: httpx.Response) -> str:
         base_message = f"Error de Taiga ({response.status_code})"

@@ -152,3 +152,12 @@ def debug_state(taiga_client: TaigaClientDep) -> dict:
 @app.post("/debug/auth")
 async def debug_auth(taiga_client: TaigaClientDep) -> dict:
     return await taiga_client.auth_diagnostics()
+
+
+@app.get("/projects")
+async def list_projects(taiga_client: TaigaClientDep) -> List[dict]:
+    """Lista todos los proyectos accesibles."""
+    try:
+        return await taiga_client.list_projects()
+    except TaigaClientError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc

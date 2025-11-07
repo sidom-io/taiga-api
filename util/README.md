@@ -37,6 +37,17 @@ taiga-fastapi-uv/
 **`troubleshooting-uv-python.md`** - Resolución de errores comunes con uv y Python 3.13
 **`taiga-devtools-example.md`** - Cómo extraer tokens del navegador
 **`taiga_token_example.jpg`** - Captura de pantalla con headers de autorización
+**`llm-docs-proyect/`** - Documentación privada del proyecto (contenido en .gitignore)
+
+### Carpeta de Documentación Privada
+
+La carpeta `llm-docs-proyect/` contiene documentación privada bajo autoría del creador del proyecto:
+
+- **Contenido**: Notas, especificaciones, contexto adicional y documentación privada
+- **Visibilidad**: Solo local, todo el contenido está en .gitignore
+- **Uso por LLMs**: Pueden leer para contexto, pero NUNCA commitear o copiar datos sin autorización
+- **Propiedad**: Contenido confidencial y propiedad intelectual del autor
+- **Regla**: Preguntar antes de usar cualquier información de esta carpeta en código o documentación pública
 
 ### Nota para Desarrolladores
 - **Humanos**: Tienen la última palabra sobre toda la documentación en `util/`

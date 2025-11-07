@@ -301,6 +301,16 @@ Para completar la integración necesitamos:
 - Documento de arquitectura de software (pendiente de revisión)
 - Especificación del Adapter .NET (pendiente)
 
-## Estado
+## Estado Actual
 
-🔴 **BLOQUEANTE** - Requiere definición urgente con el equipo de VUCE/DGA para continuar con la implementación del módulo D4.
+🔴 **BLOQUEANTE CRÍTICO** - Requiere definición urgente con el equipo de VUCE/DGA para continuar con la implementación del módulo D4.
+
+**Historias de Usuario Afectadas:**
+- HU #27 (US #66): Consulta Bultos - Requiere especificación de integración con SIM
+- HU #28 (US #67): Preguntas arancelarias - Requiere especificación de integración con KIT
+- Todas las operaciones de validación y cálculo de tributos
+
+**Impacto en Desarrollo:**
+- 16 tareas de Dashboard/Notificaciones pueden avanzar sin bloqueo
+- Tareas de validación y oficialización están bloqueadas
+- Se requiere mock/stub del KIT para desarrollo paralelo

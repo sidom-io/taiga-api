@@ -30,6 +30,7 @@ taiga-fastapi-uv/
 ## Archivos en esta carpeta
 
 **`README.md`** - Este archivo (mantenido por humanos)
+**`project-status.md`** - Estado actual del proyecto y métricas
 **`system-overview.md`** - Visión general del sistema integrado
 **`vuce-sidom-architecture.md`** - Arquitectura completa del proyecto VUCE-SIDOM DAI
 **`kit-maria-integration.md`** - Integración con KIT Malvina/Maria (bloqueante crítico)

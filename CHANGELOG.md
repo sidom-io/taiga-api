@@ -21,6 +21,20 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 - Soporte para omitir tests en ramas de desarrollo (SKIP_TESTS=1)
 
 ### Changed
+- agregar tabla comparativa HU vs tareas y cache de datos
+
+- Crear tabla comparativa completa de HU del documento vs tareas en Taiga
+- Identificar 16 tareas listas para desarrollo en 5 historias
+- Detectar 3 historias sin desglosar que necesitan tareas
+- Cachear datos de Taiga en archivos JSON para consulta offline
+- Agregar README de datos con instrucciones de actualización
+
+Archivos de cache creados:
+- taiga-projects-list.json
+- taiga-user-stories-dai.json
+- taiga-tasks-us*.json (10 historias)
+- taiga-task-statuses.json
+- taiga-userstory-statuses.json
 - agregar endpoints para gestión completa de tareas y proyectos
 
 - Agregar métodos al cliente: get_project, get_task, list_tasks, update_task

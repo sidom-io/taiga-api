@@ -4,6 +4,10 @@
 
 Sistema de digitalización de declaraciones aduaneras para Argentina (BID 3869/OC-AR).
 
+**Proyecto en Taiga**: DAI - Declaración Aduanera Integral
+**Slug**: `dai-declaracion-aduanera-integral`
+**ID**: 3
+
 ## Stack Tecnológico
 
 ### Frontend
@@ -56,6 +60,12 @@ IdP_Provider → Usuario → Sesión
 - Validaciones con KIT Malvina
 - Cálculo de tributos y generación de VEP
 
+**Estado de Implementación en Taiga:**
+- 5 historias con tareas definidas (16 tareas totales)
+- 3 historias pendientes de desglose
+- 1 historia faltante por crear
+- Ver `util/llm-docs-proyect/taiga-hu-tasks-mapping.md` para detalle completo
+
 **Flujo de Estados:**
 ```
 Borrador → En Carga → Validando → Observada → Lista → Oficializada → Pagada
@@ -64,11 +74,14 @@ Borrador → En Carga → Validando → Observada → Lista → Oficializada →
 ```
 
 **Componentes Principales:**
-- Dashboard con contadores por estado
-- Notificaciones (personales y operacionales)
-- Gestión de operaciones (manual y masiva)
-- Carga de carátula, ítems y subítems
-- Validaciones interactivas
+- Dashboard con contadores por estado (HU #21 - 3 tareas)
+- Notificaciones personales y operacionales (HU #127, #128 - 7 tareas)
+- Gestión de operaciones manual (HU #23 - 3 tareas)
+- Carga masiva desde TXT (HU #22 - 3 tareas)
+- Pre-carátula y carátula (HU #125 - pendiente desglose)
+- Menú lateral dinámico (HU #129 - pendiente desglose)
+- Actualización contextual CF4 (HU #130 - pendiente desglose)
+- Validaciones interactivas con KIT Malvina
 - Liquidación y oficialización
 
 ### D5 - Catálogo

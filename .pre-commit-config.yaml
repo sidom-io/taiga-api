@@ -200,60 +200,11 @@ repos:
     hooks:
       - id: update-changelog
         name: Actualizar CHANGELOG.md automáticamente
-        entry: bash
+        entry: ./scripts/update-changelog.sh
         language: system
         stages: [prepare-commit-msg]
-        args: [-c, '
-          COMMIT_MSG_FILE=$1
-          COMMIT_SOURCE=$2
-
-          # Solo procesar commits normales (no merges, ammends, etc)
-          if [ -n "$COMMIT_SOURCE" ]; then
-            exit 0
-          fi
-
-          # Leer mensaje del commit
-          COMMIT_MSG=$(cat "$COMMIT_MSG_FILE")
-
-          # Validar formato Conventional Commits
-          if ! echo "$COMMIT_MSG" | grep -qE "^(feat|fix|docs|style|refactor|test|chore|perf|ci|build)(\(.+\))?: .+"; then
-            echo "⚠️  Commit no sigue formato convencional, saltando changelog"
-            exit 0
-          fi
-
-          # Extraer tipo y descripción
-          TYPE=$(echo "$COMMIT_MSG" | sed -E "s/^([a-z]+)(\(.+\))?: .*/\1/")
-          DESC=$(echo "$COMMIT_MSG" | sed -E "s/^[a-z]+(\(.+\))?: (.+)/\2/")
-
-          # Determinar sección
-          case "$TYPE" in
-            feat) SECTION="Added" ;;
-            fix) SECTION="Fixed" ;;
-            *) SECTION="Changed" ;;
-          esac
-
-          # Actualizar CHANGELOG.md
-          if [ -f "CHANGELOG.md" ]; then
-            # Crear entrada
-            ENTRY="- $DESC"
-
-            # Buscar sección Unreleased y agregar entrada
-            if grep -q "## \[Unreleased\]" CHANGELOG.md; then
-              # Verificar si la sección existe
-              if grep -A 20 "## \[Unreleased\]" CHANGELOG.md | grep -q "### $SECTION"; then
-                # Agregar a sección existente
-                sed -i "/### $SECTION/a $ENTRY" CHANGELOG.md
-              else
-                # Crear nueva sección después de Unreleased
-                sed -i "/## \[Unreleased\]/a \\\n### $SECTION\n$ENTRY" CHANGELOG.md
-              fi
-
-              git add CHANGELOG.md
-              echo "✅ CHANGELOG.md actualizado: $ENTRY"
-            fi
-          fi
-        ', --]
         pass_filenames: true
+        always_run: true
 
 # Configuración global
 default_stages: [commit]

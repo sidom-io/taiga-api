@@ -9,16 +9,16 @@ Servicio FastAPI asíncrono que se autentica contra Taiga y permite crear tareas
 
 ## Configuración
 
-1. Copiá `.env.example` a `.env`:
+1. Copia `.env.example` a `.env`:
    ```bash
    cp .env.example .env
    ```
 
 2. **Configura la autenticación** (elige una opción):
 
-### Opción 1: Token de API (Recomendado)
+### Opción 1: Token de Sesión del Navegador (Recomendado)
 
-1. Ve a tu instancia de Taiga: https://taiga.vuce.gob.ar
+1. Ve a tu instancia de Taiga: https://tu-instancia-taiga.com
 2. Inicia sesión con tu usuario y contraseña
 3. Ve a tu perfil (click en tu avatar)
 4. Ve a "Settings" o "Configuración"
@@ -27,12 +27,12 @@ Servicio FastAPI asíncrono que se autentica contra Taiga y permite crear tareas
 7. Agrega el token al archivo `.env`:
 
 ```bash
-TAIGA_AUTH_TOKEN=tu_token_aqui
+TAIGA_AUTH_TOKEN=tu_token_de_sesion_aqui
 ```
 
 ### Opción 2: Usuario y Contraseña
 
-Si no puedes obtener un token de API:
+Si no puedes obtener un token de sesión:
 
 ```bash
 TAIGA_USERNAME=tu_usuario
@@ -84,8 +84,8 @@ Sigue estos pasos para obtener un token válido:
    ```
 3. **Comenta las credenciales de usuario**:
    ```bash
-   # TAIGA_USERNAME=fernandop
-   # TAIGA_PASSWORD=P3p3r1na.
+   # TAIGA_USERNAME=tu_usuario
+   # TAIGA_PASSWORD=tu_contraseña
    ```
 
 ![Ejemplo de interfaz de Taiga](util/taiga_token_example.jpg)
@@ -96,7 +96,7 @@ Sigue estos pasos para obtener un token válido:
 
 ```bash
 # Inicia el servidor
-uv run uvicorn app.main:app --reload --port 8001
+uv run uvicorn app.main:app --reload
 
 # En otra terminal, prueba la autenticación
 curl -X POST "http://localhost:8001/debug/auth"

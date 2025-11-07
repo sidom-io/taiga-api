@@ -595,13 +595,54 @@ La respuesta exitosa incluye `id`, `subject`, `project`, `user_story` y `ref`.
 curl "http://0.0.0.0:8000/user-stories?project=sample-project-slug&titles_only=true"
 ```
 
-### Obtener detalle de historia de usuario
+#### Obtener detalle de historia de usuario
 
 `GET /user-stories/{user_story_id}`
 
 ```bash
 curl "http://0.0.0.0:8000/user-stories/42"
 ```
+
+#### Crear historia de usuario
+
+`POST /user-stories`
+
+```bash
+curl -X POST http://0.0.0.0:8000/user-stories \
+  -H "Content-Type: application/json" \
+  -d '{
+    "project": "sample-project-slug",
+    "subject": "Nueva historia de usuario",
+    "description": "Descripción detallada de la historia",
+    "tags": ["backend", "api"]
+  }'
+```
+
+```bash
+curl -X POST http://0.0.0.0:8000/user-stories \
+  -H "Content-Type: application/json" \
+  -d '{
+    "project": 123,
+    "subject": "Nueva historia por ID de proyecto"
+  }'
+```
+
+La respuesta exitosa incluye `id`, `subject`, `project`, `description`, `tags` y `ref`.
+
+#### Actualizar historia de usuario
+
+`PATCH /user-stories/{user_story_id}`
+
+```bash
+curl -X PATCH http://0.0.0.0:8000/user-stories/42 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "description": "Descripción actualizada",
+    "version": 1
+  }'
+```
+
+**Nota:** El campo `version` es obligatorio para control de concurrencia. Obtén la versión actual con `GET /user-stories/{id}`.
 
 #### Listar tareas de una historia
 

@@ -8,6 +8,7 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 ## [Unreleased]
 
 ### Added
+- agregar endpoints para crear y actualizar historias de usuario
 - agregar endpoint para listar proyectos
 - agregar sistema de análisis de cambios con LLM
 - agregar actualización automática de changelog
@@ -104,6 +105,7 @@ Endpoints nuevos:
 ## [0.1.0] - 2024-11-07
 
 ### Added
+- agregar endpoints para crear y actualizar historias de usuario
 - agregar endpoint para listar proyectos
 - agregar sistema de análisis de cambios con LLM
 - agregar actualización automática de changelog

@@ -21,6 +21,29 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 - Soporte para omitir tests en ramas de desarrollo (SKIP_TESTS=1)
 
 ### Changed
+- implementar creación bulk de tareas desde markdown y completar HU #129
+
+Funcionalidades nuevas:
+- Parser de markdown para extraer tareas con criterios y dependencias
+- Endpoint POST /tasks/bulk-from-markdown para creación masiva
+- Conversión automática de referencias (Tarea N, HU #N) a links de Taiga
+- Actualización automática de descripción de US con diagramas
+- Endpoint DELETE /tasks/{id} para eliminar tareas
+- Método update_user_story para actualizar historias
+
+HU #129 - Menú Lateral Dinámico:
+- 8 tareas creadas en Taiga (#175-#182)
+- Diagramas Mermaid de arquitectura y flujo
+- Tarea 3 modificada: Invalidación JIT en lugar de caché simple
+- Incluye integración con Adapter RPA (tarea paralela)
+
+Documentación:
+- util/ejemplo-desglose-tareas.md - Ejemplo real basado en HU #129
+- HU #130 marcada como duplicada (redundante con Tarea 6 de HU #129)
+- Actualizado project-status.md: 6 historias completas, 24 tareas
+- Actualizado taiga-hu-tasks-mapping.md con estado actual
+
+Total: 24 tareas listas para desarrollo
 - agregar tabla comparativa HU vs tareas y cache de datos
 
 - Crear tabla comparativa completa de HU del documento vs tareas en Taiga

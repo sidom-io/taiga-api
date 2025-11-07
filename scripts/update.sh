@@ -147,25 +147,53 @@ elif [ "$MODE" = "--remote" ]; then
             fi
             ;;
         2)
-            # Modo LLM
+            # Modo LLM - Generación automática
             echo ""
-            echo -e "${YELLOW}🤖 Modo LLM activado${NC}"
+            echo -e "${YELLOW}🤖 Generando resumen con análisis automático...${NC}"
             echo ""
-            echo "Instrucciones:"
-            echo "  1. Copia el análisis de cambios mostrado arriba"
-            echo "  2. Pide a un LLM que genere:"
-            echo "     - Mensaje de commit formal"
-            echo "     - Resumen para changelog"
-            echo "  3. Vuelve aquí y pega el mensaje generado"
-            echo ""
-            read -p "Presiona Enter cuando tengas el mensaje del LLM..."
-            echo ""
-            echo "💬 Pega el mensaje de commit generado por el LLM:"
-            read -p "Mensaje: " COMMIT_MSG
 
-            if [ -z "$COMMIT_MSG" ]; then
-                echo -e "${RED}❌ Mensaje vacío${NC}"
-                exit 1
+            # Obtener rama actual
+            CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+
+            # Generar resumen basado en commits
+            COMMIT_COUNT=$(git log origin/$CURRENT_BRANCH..HEAD --oneline 2>/dev/null | wc -l || echo "0")
+            FIRST_COMMIT=$(git log origin/$CURRENT_BRANCH..HEAD --oneline --reverse 2>/dev/null | head -1 | cut -d' ' -f2- || echo "")
+            LAST_COMMIT=$(git log -1 --oneline | cut -d' ' -f2-)
+
+            # Extraer tipo del primer commit
+            COMMIT_TYPE=$(echo "$FIRST_COMMIT" | grep -oE '^[a-z]+' || echo "chore")
+
+            # Generar mensaje automático
+            if [ "$COMMIT_COUNT" -gt 5 ]; then
+                COMMIT_MSG="${COMMIT_TYPE}: ${LAST_COMMIT}
+
+Resumen de ${COMMIT_COUNT} commits:
+$(git log origin/$CURRENT_BRANCH..HEAD --oneline --format='- %s' | head -10)
+
+Ver commits individuales para más detalles."
+            else
+                COMMIT_MSG="${COMMIT_TYPE}: ${LAST_COMMIT}
+
+Cambios incluidos:
+$(git log origin/$CURRENT_BRANCH..HEAD --oneline --format='- %s')"
+            fi
+
+            echo "📝 Mensaje generado:"
+            echo "---"
+            echo "$COMMIT_MSG"
+            echo "---"
+            echo ""
+            read -p "¿Usar este mensaje? (s/n): " CONFIRM
+
+            if [ "$CONFIRM" != "s" ] && [ "$CONFIRM" != "S" ]; then
+                echo ""
+                echo "💬 Ingresa tu mensaje personalizado:"
+                read -p "Mensaje: " CUSTOM_MSG
+                if [ -z "$CUSTOM_MSG" ]; then
+                    echo -e "${RED}❌ Mensaje vacío${NC}"
+                    exit 1
+                fi
+                COMMIT_MSG="$CUSTOM_MSG"
             fi
             ;;
         3)

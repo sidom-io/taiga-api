@@ -518,7 +518,46 @@ curl "http://0.0.0.0:8000/projects"
 
 Retorna todos los proyectos accesibles por el usuario autenticado.
 
+#### Obtener detalle de proyecto
+
+`GET /projects/{project_id}`
+
+```bash
+curl "http://0.0.0.0:8000/projects/vuce-sidom-dai"
+```
+
 ### Gestión de Tareas
+
+#### Listar tareas
+
+`GET /tasks?project={id}&user_story={id}&status={id}&assigned_to={id}`
+
+```bash
+# Todas las tareas de un proyecto
+curl "http://0.0.0.0:8000/tasks?project=vuce-sidom-dai"
+
+# Tareas de una historia específica
+curl "http://0.0.0.0:8000/tasks?user_story=42"
+
+# Tareas por estado
+curl "http://0.0.0.0:8000/tasks?project=1&status=2"
+```
+
+#### Obtener detalle de tarea
+
+`GET /tasks/{task_id}`
+
+```bash
+curl "http://0.0.0.0:8000/tasks/123"
+```
+
+#### Actualizar tarea
+
+`PATCH /tasks/{task_id}?subject=...&status=...&version=...`
+
+```bash
+curl -X PATCH "http://0.0.0.0:8000/tasks/123?subject=Nueva%20descripción&status=2&version=1"
+```
 
 #### Crear tarea
 
@@ -546,7 +585,9 @@ curl -X POST http://0.0.0.0:8000/tasks \
 
 La respuesta exitosa incluye `id`, `subject`, `project`, `user_story` y `ref`.
 
-### Listar historias de usuario
+### Gestión de Historias de Usuario
+
+#### Listar historias de usuario
 
 `GET /user-stories?project=<id_o_slug>&titles_only=<true|false>`
 
@@ -562,12 +603,30 @@ curl "http://0.0.0.0:8000/user-stories?project=sample-project-slug&titles_only=t
 curl "http://0.0.0.0:8000/user-stories/42"
 ```
 
-### Listar tareas de una historia
+#### Listar tareas de una historia
 
 `GET /user-stories/{user_story_id}/tasks`
 
 ```bash
 curl "http://0.0.0.0:8000/user-stories/42/tasks"
+```
+
+### Metadatos del Proyecto
+
+#### Obtener estados de tareas
+
+`GET /projects/{project_id}/task-statuses`
+
+```bash
+curl "http://0.0.0.0:8000/projects/vuce-sidom-dai/task-statuses"
+```
+
+#### Obtener estados de historias
+
+`GET /projects/{project_id}/userstory-statuses`
+
+```bash
+curl "http://0.0.0.0:8000/projects/vuce-sidom-dai/userstory-statuses"
 ```
 
 ### Depuración

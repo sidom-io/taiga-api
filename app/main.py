@@ -161,3 +161,87 @@ async def list_projects(taiga_client: TaigaClientDep) -> List[dict]:
         return await taiga_client.list_projects()
     except TaigaClientError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.get("/projects/{project_id}")
+async def get_project(project_id: Union[int, str], taiga_client: TaigaClientDep) -> dict:
+    """Obtiene detalle de un proyecto por ID o slug."""
+    try:
+        return await taiga_client.get_project(project_id)
+    except TaigaClientError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.get("/tasks")
+async def list_tasks(
+    taiga_client: TaigaClientDep,
+    project: Annotated[Union[int, str, None], Query()] = None,
+    user_story: Annotated[int | None, Query()] = None,
+    status: Annotated[int | None, Query()] = None,
+    assigned_to: Annotated[int | None, Query()] = None,
+) -> List[dict]:
+    """Lista tareas con filtros opcionales."""
+    try:
+        return await taiga_client.list_tasks(
+            project=project,
+            user_story=user_story,
+            status=status,
+            assigned_to=assigned_to,
+        )
+    except TaigaClientError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.get("/tasks/{task_id}")
+async def get_task(task_id: int, taiga_client: TaigaClientDep) -> dict:
+    """Obtiene detalle de una tarea específica."""
+    try:
+        return await taiga_client.get_task(task_id)
+    except TaigaClientError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.patch("/tasks/{task_id}")
+async def update_task(
+    task_id: int,
+    taiga_client: TaigaClientDep,
+    subject: Annotated[str | None, Query()] = None,
+    description: Annotated[str | None, Query()] = None,
+    status: Annotated[int | None, Query()] = None,
+    assigned_to: Annotated[int | None, Query()] = None,
+    version: Annotated[int | None, Query()] = None,
+) -> dict:
+    """Actualiza una tarea existente."""
+    try:
+        return await taiga_client.update_task(
+            task_id=task_id,
+            subject=subject,
+            description=description,
+            status=status,
+            assigned_to=assigned_to,
+            version=version,
+        )
+    except TaigaClientError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.get("/projects/{project_id}/task-statuses")
+async def get_task_statuses(
+    project_id: Union[int, str], taiga_client: TaigaClientDep
+) -> List[dict]:
+    """Obtiene los estados de tareas disponibles en un proyecto."""
+    try:
+        return await taiga_client.get_task_statuses(project_id)
+    except TaigaClientError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.get("/projects/{project_id}/userstory-statuses")
+async def get_userstory_statuses(
+    project_id: Union[int, str], taiga_client: TaigaClientDep
+) -> List[dict]:
+    """Obtiene los estados de historias de usuario disponibles en un proyecto."""
+    try:
+        return await taiga_client.get_userstory_statuses(project_id)
+    except TaigaClientError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc

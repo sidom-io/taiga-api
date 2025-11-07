@@ -440,6 +440,164 @@ class TaigaClient:
 
         return self._json_list_or_error(response)
 
+    async def get_project(self, project: Union[int, str]) -> Dict[str, Any]:
+        """Obtiene detalle de un proyecto por ID o slug."""
+        project_id = await self._resolve_project(project)
+        client = await self._ensure_client()
+        token = await self._get_token()
+        headers = self._build_headers(token)
+
+        try:
+            response = await client.get(f"projects/{project_id}", headers=headers)
+        except httpx.RequestError as exc:
+            raise TaigaClientError(f"No se pudo obtener proyecto: {exc}") from exc
+
+        self._record_response(response)
+
+        if response.status_code != 200:
+            raise TaigaClientError(self._parse_error(response))
+
+        return self._json_or_error(response)
+
+    async def get_task(self, task_id: int) -> Dict[str, Any]:
+        """Obtiene detalle de una tarea específica."""
+        client = await self._ensure_client()
+        token = await self._get_token()
+        headers = self._build_headers(token)
+
+        try:
+            response = await client.get(f"tasks/{task_id}", headers=headers)
+        except httpx.RequestError as exc:
+            raise TaigaClientError(f"No se pudo obtener tarea: {exc}") from exc
+
+        self._record_response(response)
+
+        if response.status_code != 200:
+            raise TaigaClientError(self._parse_error(response))
+
+        return self._json_or_error(response)
+
+    async def list_tasks(
+        self,
+        project: Union[int, str] = None,
+        user_story: int = None,
+        status: int = None,
+        assigned_to: int = None,
+    ) -> List[Dict[str, Any]]:
+        """Lista tareas con filtros opcionales."""
+        client = await self._ensure_client()
+        token = await self._get_token()
+        headers = self._build_headers(token)
+
+        params = {}
+        if project is not None:
+            params["project"] = await self._resolve_project(project)
+        if user_story is not None:
+            params["user_story"] = user_story
+        if status is not None:
+            params["status"] = status
+        if assigned_to is not None:
+            params["assigned_to"] = assigned_to
+
+        try:
+            response = await client.get("tasks", headers=headers, params=params)
+        except httpx.RequestError as exc:
+            raise TaigaClientError(f"No se pudo listar tareas: {exc}") from exc
+
+        self._record_response(response)
+
+        if response.status_code != 200:
+            raise TaigaClientError(self._parse_error(response))
+
+        return self._json_list_or_error(response)
+
+    async def update_task(
+        self,
+        task_id: int,
+        subject: str = None,
+        description: str = None,
+        status: int = None,
+        assigned_to: int = None,
+        tags: List[str] = None,
+        version: int = None,
+    ) -> Dict[str, Any]:
+        """Actualiza una tarea existente."""
+        client = await self._ensure_client()
+        token = await self._get_token()
+        headers = self._build_headers(token)
+
+        # Construir payload solo con campos proporcionados
+        payload = {}
+        if subject is not None:
+            payload["subject"] = subject
+        if description is not None:
+            payload["description"] = description
+        if status is not None:
+            payload["status"] = status
+        if assigned_to is not None:
+            payload["assigned_to"] = assigned_to
+        if tags is not None:
+            payload["tags"] = tags
+        if version is not None:
+            payload["version"] = version
+
+        if not payload:
+            raise TaigaClientError("Se requiere al menos un campo para actualizar")
+
+        try:
+            response = await client.patch(f"tasks/{task_id}", headers=headers, json=payload)
+        except httpx.RequestError as exc:
+            raise TaigaClientError(f"No se pudo actualizar tarea: {exc}") from exc
+
+        self._record_response(response)
+
+        if response.status_code != 200:
+            raise TaigaClientError(self._parse_error(response))
+
+        return self._json_or_error(response)
+
+    async def get_task_statuses(self, project: Union[int, str]) -> List[Dict[str, Any]]:
+        """Obtiene los estados de tareas disponibles en un proyecto."""
+        project_id = await self._resolve_project(project)
+        client = await self._ensure_client()
+        token = await self._get_token()
+        headers = self._build_headers(token)
+
+        try:
+            response = await client.get(
+                "task-statuses", headers=headers, params={"project": project_id}
+            )
+        except httpx.RequestError as exc:
+            raise TaigaClientError(f"No se pudo obtener estados de tareas: {exc}") from exc
+
+        self._record_response(response)
+
+        if response.status_code != 200:
+            raise TaigaClientError(self._parse_error(response))
+
+        return self._json_list_or_error(response)
+
+    async def get_userstory_statuses(self, project: Union[int, str]) -> List[Dict[str, Any]]:
+        """Obtiene los estados de historias de usuario disponibles en un proyecto."""
+        project_id = await self._resolve_project(project)
+        client = await self._ensure_client()
+        token = await self._get_token()
+        headers = self._build_headers(token)
+
+        try:
+            response = await client.get(
+                "userstory-statuses", headers=headers, params={"project": project_id}
+            )
+        except httpx.RequestError as exc:
+            raise TaigaClientError(f"No se pudo obtener estados de historias: {exc}") from exc
+
+        self._record_response(response)
+
+        if response.status_code != 200:
+            raise TaigaClientError(self._parse_error(response))
+
+        return self._json_list_or_error(response)
+
     @staticmethod
     def _parse_error(response: httpx.Response) -> str:
         base_message = f"Error de Taiga ({response.status_code})"

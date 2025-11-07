@@ -36,6 +36,21 @@ Endpoints nuevos:
 - PATCH /tasks/{id} - Actualizar tarea
 - GET /projects/{id}/task-statuses - Estados de tareas
 - GET /projects/{id}/userstory-statuses - Estados de historias
+- agregar endpoints para gestión completa de tareas y proyectos
+
+- Agregar métodos al cliente: get_project, get_task, list_tasks, update_task
+- Agregar endpoints de metadatos: task-statuses, userstory-statuses
+- Implementar filtrado de tareas por proyecto, historia, estado y asignado
+- Agregar endpoint PATCH para actualizar tareas
+- Actualizar README con nuevos endpoints y ejemplos de uso
+
+Endpoints nuevos:
+- GET /projects/{id} - Detalle de proyecto
+- GET /tasks - Listar tareas con filtros
+- GET /tasks/{id} - Detalle de tarea
+- PATCH /tasks/{id} - Actualizar tarea
+- GET /projects/{id}/task-statuses - Estados de tareas
+- GET /projects/{id}/userstory-statuses - Estados de historias
 - actualizar contexto del proyecto
 - agregar guía de troubleshooting para uv y Python 3.13
 - verificar funcionamiento después de fix

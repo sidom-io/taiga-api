@@ -22,6 +22,15 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 - Soporte para omitir tests en ramas de desarrollo (SKIP_TESTS=1)
 
 ### Changed
+- actualizar README con estructura completa del proyecto
+
+- Árbol completo del proyecto con todos los archivos y carpetas
+- Descripción detallada de app/, tests/, scripts/ y util/
+- Documentación de llm-docs-proyect/ con índice de contenidos
+- Actualizar propósito con nuevas funcionalidades (CRUD completo)
+- Ampliar tecnologías clave con herramientas de desarrollo
+- Mejorar configuración crítica con opciones de autenticación
+- Comandos esenciales actualizados con scripts y workflows
 - actualizar changelog con cambios de documentación
 - documentar endpoints POST y PATCH para user-stories
 - implementar creación bulk de tareas desde markdown y completar HU #129

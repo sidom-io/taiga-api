@@ -2,14 +2,131 @@
 
 Servicio FastAPI asíncrono que se autentica contra Taiga y permite crear tareas mediante un endpoint REST.
 
+## Contexto del Proyecto
+
+Este servicio es parte del proyecto **VUCE-SIDOM DAI** (Declaración Aduanera Informatizada), un sistema de digitalización de procesos aduaneros para Argentina bajo el préstamo BID 3869/OC-AR.
+
+### Arquitectura del Sistema
+
+```
+Usuario → Load Balancer → Frontend (NextJS 15) → Backend (FastAPI) → MySQL 8.0
+                                                      ↓
+                                                  RabbitMQ
+                                                      ↓
+                                              Adapter (.NET x86)
+                                                      ↓
+                                              KIT Malvina/Maria
+```
+
+### Módulos del Sistema
+
+- **D3 (Seguridad)**: Usuarios, autenticación vía Clave Fiscal ARCA, delegaciones CF4, roles y permisos
+- **D4 (DAI)**: Operaciones IMEX - Creación y gestión de declaraciones aduaneras (módulo actual)
+- **D5 (Catálogo)**: Mercaderías, NCM, productos y atributos
+- **D6 (Búsqueda)**: Índices, consultas guardadas y reportes
+- **D7-D8 (Documentos)**: LPCO, sobres digitales, adjuntos y firma digital
+
+### Integraciones Externas
+
+- **KIT Malvina/Maria**: Sistema legacy 32-bit para validaciones arancelarias y cálculo de tributos
+- **VUCE Central**: Sistema central de Ventanilla Única de Comercio Exterior
+- **TAD (ARCA)**: Sistema tributario y de autenticación
+- **ARCA AFIP**: Autenticación vía Clave Fiscal
+
+### Conceptos Clave
+
+- **CF4**: CUIT de la empresa que el usuario está representando (no su propio CUIT)
+- **Delegación**: Permiso que tiene un usuario para operar en nombre de una empresa (CF4)
+- **Delegación Activa**: CF4 seleccionado actualmente por el usuario en su sesión
+
+### ⚠️ Información Pendiente (Bloqueantes)
+
+Estos puntos requieren definición con VUCE/DGA para completar la implementación:
+
+1. **Acceso a datos del KIT Maria**: Protocolo de comunicación, endpoints y formato de datos
+2. Catálogo completo de tipos de eventos para notificaciones
+3. Diagrama de transición entre estados de operaciones
+4. Matriz completa de permisos por rol
+5. Política de retención de notificaciones históricas
+
 ## Índice
 
+- [Contexto del Proyecto](#contexto-del-proyecto)
+- [Flujo de Operaciones DAI](#flujo-de-operaciones-dai)
 - [Requisitos previos](#requisitos-previos)
 - [Configuración](#configuración)
 - [Solución de Problemas de Autenticación](#solución-de-problemas-de-autenticación)
 - [Instalación y Ejecución](#instalación-de-dependencias)
 - [Endpoints Disponibles](#endpoint-disponible)
 - [Recursos Adicionales](#recursos-adicionales)
+
+## Flujo de Operaciones DAI
+
+El módulo D4 implementa el flujo completo de declaraciones aduaneras:
+
+### 1. Dashboard y Navegación
+- Visualización de operaciones agrupadas por estado
+- Notificaciones personales y operacionales (por CF4)
+- Menú dinámico según permisos del usuario
+- Cambio de CF4 con actualización automática del contexto
+
+### 2. Creación de Operaciones
+- **Manual**: Formulario paso a paso
+- **Masiva**: Carga mediante archivo CSV
+
+### 3. Carga de Información
+1. **Pre-carátula**: Datos iniciales de la operación
+2. **Carátula**: Información completa (varía según subrégimen)
+3. **Ítems**: Mercaderías con posiciones arancelarias
+4. **Subítems**: Detalle de cada mercadería
+5. **Documentación**: Adjuntos y referencias
+
+### 4. Validaciones
+- Validaciones interactivas con KIT Malvina
+- Preguntas dinámicas según tipo de operación
+- Verificación de datos arancelarios
+
+### 5. Oficialización
+1. Liquidación de tributos
+2. Generación de VEP (Volante Electrónico de Pago)
+3. Oficialización final
+
+### Estados de Operación
+
+```
+Borrador → En Carga → Validando → Observada → Lista → Oficializada → Pagada
+                          ↓
+                      Rechazada
+```
+
+### Notificaciones por Origen
+
+- 🔵 **KIT Malvina**: Validaciones y cálculos arancelarios
+- 🟢 **DAI Interno**: Eventos del sistema
+- 🟠 **VUCE Central**: Coordinación interorganismos
+
+## Relaciones entre Módulos
+
+```
+D3 (Seguridad)
+  ↓ posee
+D4 (Declaraciones) ← crea/modifica ← D3
+  ↓ referencia
+D5 (Catálogo) → indexa → D6 (Búsqueda)
+  ↓ consulta                    ↓
+D4 ← consulta ← D6              ↓
+  ↓ genera                      ↓
+D7-D8 (Documentos) ← almacena ← D6
+```
+
+### Dependencias Clave
+
+- **D4 depende de D3**: Autenticación, permisos y delegaciones CF4
+- **D4 depende de D5**: Catálogo de mercaderías y NCM
+- **D4 depende de KIT Malvina**: Validaciones y cálculo de tributos (⚠️ bloqueante)
+- **D4 integra con VUCE Central**: Notificaciones interorganismos
+- **D6 indexa D4 y D5**: Búsquedas y reportes
+- **D7-D8 almacena documentos de D4**: LPCO, adjuntos, firmas
 
 ## Requisitos previos
 
@@ -286,6 +403,14 @@ make ci           # Validación completa (simula CI)
 
 ## Recursos Adicionales
 
+### Documentación del Proyecto VUCE-SIDOM
+
+- **`util/vuce-sidom-architecture.md`**: Arquitectura completa del sistema, módulos y stack tecnológico
+- **`util/kit-maria-integration.md`**: Integración con KIT Malvina/Maria (⚠️ bloqueante crítico)
+- **`util/system-overview.md`**: Visión general del sistema integrado
+
+### Documentación de Desarrollo
+
 - **Carpeta `util/`**: Contiene capturas de pantalla y guías adicionales para la configuración
 - **Guía de desarrollo**: Ver `util/DEVELOPMENT.md` para documentación detallada de desarrollo
 - **Herramientas de diagnóstico**: Usa los endpoints `/debug/*` para troubleshooting
@@ -293,10 +418,18 @@ make ci           # Validación completa (simula CI)
 - **Soporte de administrador**: Si no encuentras opciones de API en tu perfil, contacta al administrador de tu instancia de Taiga
 
 ### Para Desarrolladores y Modelos de IA
+
 - **Archivo `.llms`**: Punto de entrada y reglas para modelos de IA
 - **Contrato LLM-Humano**: Los LLMs crean documentación en `util/`, los humanos mantienen README.md
 - **CHANGELOG.md**: Registro automático de cambios del proyecto
 - **Guías de commits**: Ver `util/commit-guidelines.md` para formato de commits
+
+### Documentación Privada
+
+- **`util/llm-docs-proyect/`**: Documentación privada del autor (no commiteable)
+  - Historias de Usuario D4
+  - TASKs de ejemplo D3
+  - Diagramas de arquitectura y modelo de datos
 
 ## Instalación y Configuración
 
@@ -371,9 +504,23 @@ El servicio quedará disponible en `http://0.0.0.0:8000/`.
 
 Para usar la api se recomienda ver la documentación `http://0.0.0.0:8000/docs`.
 
-## Endpoint disponible
+## Endpoints Disponibles
 
-### Crear tarea
+### Gestión de Proyectos
+
+#### Listar proyectos
+
+`GET /projects`
+
+```bash
+curl "http://0.0.0.0:8000/projects"
+```
+
+Retorna todos los proyectos accesibles por el usuario autenticado.
+
+### Gestión de Tareas
+
+#### Crear tarea
 
 `POST /tasks`
 

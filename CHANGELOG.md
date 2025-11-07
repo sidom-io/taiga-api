@@ -8,6 +8,7 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 ## [Unreleased]
 
 ### Added
+- agregar endpoint para listar proyectos
 - agregar sistema de análisis de cambios con LLM
 - agregar actualización automática de changelog
 - Sistema de pre-commit hooks con validaciones completas
@@ -36,6 +37,7 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 ## [0.1.0] - 2024-11-07
 
 ### Added
+- agregar endpoint para listar proyectos
 - agregar sistema de análisis de cambios con LLM
 - agregar actualización automática de changelog
 - Servicio FastAPI asíncrono para integración con Taiga

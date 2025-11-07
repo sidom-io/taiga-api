@@ -31,6 +31,8 @@ taiga-fastapi-uv/
 
 **`README.md`** - Este archivo (mantenido por humanos)
 **`system-overview.md`** - Visión general del sistema integrado
+**`vuce-sidom-architecture.md`** - Arquitectura completa del proyecto VUCE-SIDOM DAI
+**`kit-maria-integration.md`** - Integración con KIT Malvina/Maria (bloqueante crítico)
 **`DEVELOPMENT.md`** - Guía completa de desarrollo
 **`commit-guidelines.md`** - Guías de commits y versionado
 **`llm-workflow.md`** - Flujo de trabajo con LLM para commits profesionales
@@ -58,6 +60,8 @@ La carpeta `llm-docs-proyect/` contiene documentación privada bajo autoría del
 
 ### Propósito
 Servicio FastAPI asíncrono que se autentica contra Taiga y permite crear tareas mediante un endpoint REST.
+
+Este servicio es parte del proyecto **VUCE-SIDOM DAI**, un sistema de digitalización de declaraciones aduaneras para Argentina. El servicio de Taiga se utiliza para gestionar las historias de usuario y tareas del desarrollo del módulo D4 (Operaciones IMEX).
 
 ### Tecnologías Clave
 - **Python 3.11+**: Lenguaje base con soporte para async/await

@@ -1,13 +1,19 @@
 import os
+from pathlib import Path
 from typing import Annotated, List, Union
 
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 from fastapi import Depends, FastAPI, HTTPException, Query
 
 from app.schemas import TaskCreateRequest, TaskResponse, UserStoryResponse
 from app.taiga_client import TaigaClient, TaigaClientError
 
-load_dotenv()
+BASE_DIR = Path(__file__).resolve().parent.parent
+DOTENV_PATH = BASE_DIR / ".env"
+if DOTENV_PATH.exists():
+    load_dotenv(DOTENV_PATH, override=True)
+else:
+    load_dotenv(find_dotenv(), override=True)
 
 app = FastAPI(title="Taiga Task API")
 
@@ -21,8 +27,16 @@ def _load_env(variable: str) -> str:
 
 def _build_taiga_client() -> TaigaClient:
     base_url = _load_env("TAIGA_BASE_URL")
-    username = _load_env("TAIGA_USERNAME")
-    password = _load_env("TAIGA_PASSWORD")
+    
+    # Intentar obtener token de API primero
+    auth_token = os.getenv("TAIGA_AUTH_TOKEN")
+    
+    # Si no hay token, usar usuario/contraseña
+    username = None
+    password = None
+    if not auth_token:
+        username = _load_env("TAIGA_USERNAME")
+        password = _load_env("TAIGA_PASSWORD")
 
     token_ttl_raw = os.getenv("TAIGA_TOKEN_TTL", "82800")
     try:
@@ -34,6 +48,7 @@ def _build_taiga_client() -> TaigaClient:
         base_url=base_url,
         username=username,
         password=password,
+        auth_token=auth_token,
         token_ttl=token_ttl,
     )
 
@@ -111,3 +126,29 @@ async def list_tasks_for_user_story(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     return [TaskResponse(**task) for task in tasks]
+
+
+@app.post("/debug/cache/clear")
+async def clear_cache(taiga_client: TaigaClientDep) -> dict:
+    await taiga_client.reset_token_cache()
+    state = taiga_client.debug_state()
+    state["cache_cleared"] = True
+    return state
+
+
+@app.get("/debug/connection")
+async def debug_connection(taiga_client: TaigaClientDep) -> dict:
+    try:
+        return await taiga_client.check_connection()
+    except TaigaClientError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.get("/debug/state")
+def debug_state(taiga_client: TaigaClientDep) -> dict:
+    return taiga_client.debug_state()
+
+
+@app.post("/debug/auth")
+async def debug_auth(taiga_client: TaigaClientDep) -> dict:
+    return await taiga_client.auth_diagnostics()

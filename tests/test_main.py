@@ -14,11 +14,11 @@ def test_debug_endpoints_exist(client: TestClient):
     """Test que los endpoints de debug existen."""
     # Verificar que los endpoints de debug están disponibles
     # Nota: Pueden fallar por falta de configuración, pero deben existir
-    
+
     response = client.get("/debug/state")
     # El endpoint debe existir (no 404)
     assert response.status_code != 404
-    
+
     response = client.post("/debug/auth")
     # El endpoint debe existir (no 404)
     assert response.status_code != 404

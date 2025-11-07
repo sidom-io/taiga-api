@@ -49,11 +49,11 @@ async def test_client_lifecycle():
         base_url="https://test.example.com/api/v1/",
         auth_token="test_token"
     )
-    
+
     # Test start
     await client.start()
     assert client._client is not None
-    
+
     # Test close
     await client.close()
     assert client._client is None

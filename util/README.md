@@ -29,12 +29,13 @@ taiga-fastapi-uv/
 
 ## Archivos en esta carpeta
 
-**`README.md`** - Este archivo (mantenido por humanos)  
-**`system-overview.md`** - Visión general del sistema integrado  
-**`DEVELOPMENT.md`** - Guía completa de desarrollo  
-**`commit-guidelines.md`** - Guías de commits y versionado  
-**`taiga-devtools-example.md`** - Cómo extraer tokens del navegador  
-**`taiga_token_example.jpg`** - Captura de pantalla con headers de autorización  
+**`README.md`** - Este archivo (mantenido por humanos)
+**`system-overview.md`** - Visión general del sistema integrado
+**`DEVELOPMENT.md`** - Guía completa de desarrollo
+**`commit-guidelines.md`** - Guías de commits y versionado
+**`llm-workflow.md`** - Flujo de trabajo con LLM para commits profesionales
+**`taiga-devtools-example.md`** - Cómo extraer tokens del navegador
+**`taiga_token_example.jpg`** - Captura de pantalla con headers de autorización
 
 ### Nota para Desarrolladores
 - **Humanos**: Tienen la última palabra sobre toda la documentación en `util/`

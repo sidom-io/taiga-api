@@ -34,7 +34,7 @@ class TaigaClient:
         self._token_expires_at: Optional[datetime] = None
         self._auth_lock = asyncio.Lock()
         self._last_response_meta: Dict[str, Any] = {}
-        
+
         # Validar que tenemos credenciales válidas
         if not auth_token and not (username and password):
             raise ValueError("Se requiere auth_token o username/password")
@@ -128,11 +128,11 @@ class TaigaClient:
         if self.auth_token:
             self._cache_token(self.auth_token)
             return self.auth_token
-            
+
         # Si no, autenticar con usuario/contraseña
         if not (self.username and self.password):
             raise TaigaClientError("No hay credenciales disponibles para autenticación")
-            
+
         client = await self._ensure_client()
         payload = {
             "type": "normal",
@@ -316,7 +316,7 @@ class TaigaClient:
                 headers = self._build_headers(self.auth_token)
                 response = await client.get("users/me", headers=headers)
                 self._record_response(response)
-                
+
                 if response.status_code == 200:
                     self._cache_token(self.auth_token)
                     return {
@@ -350,7 +350,7 @@ class TaigaClient:
                     "url": f"{self.base_url}users/me",
                     "auth_method": "api_token"
                 }
-        
+
         # Si no tenemos token de API, probar con usuario/contraseña
         if not (self.username and self.password):
             return {
@@ -358,7 +358,7 @@ class TaigaClient:
                 "error": "No hay credenciales disponibles",
                 "auth_method": "none"
             }
-            
+
         client = await self._ensure_client()
         payload = {
             "type": "normal",

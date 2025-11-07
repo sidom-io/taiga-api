@@ -27,10 +27,10 @@ def _load_env(variable: str) -> str:
 
 def _build_taiga_client() -> TaigaClient:
     base_url = _load_env("TAIGA_BASE_URL")
-    
+
     # Intentar obtener token de API primero
     auth_token = os.getenv("TAIGA_AUTH_TOKEN")
-    
+
     # Si no hay token, usar usuario/contraseña
     username = None
     password = None

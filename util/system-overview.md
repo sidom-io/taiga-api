@@ -84,35 +84,50 @@ git add . → git commit -m "tipo: desc" → git push
 
 ## Comandos Principales
 
-### Flujo Normal (Recomendado)
+### Flujo Recomendado (con uv)
 
 ```bash
 # Configuración inicial (una sola vez)
 ./scripts/setup-dev.sh
 
 # Desarrollo diario
+uv run uvicorn app.main:app --reload  # Servidor
+
+# Commit y push automatizado
+./scripts/actualizar_remoto.sh
+# ↑ Ejecuta TODAS las validaciones con uv y hace commit/push
+```
+
+### Flujo Alternativo (Git nativo)
+
+```bash
+# Desarrollo diario
 git add .
 git commit -m "feat(scope): descripción"
-# ↑ Esto ejecuta TODAS las validaciones automáticamente
+# ↑ Los hooks ejecutan validaciones automáticamente
 
-# Push
 git push
+```
+
+### Comandos uv Directos
+
+```bash
+# Desarrollo
+uv run uvicorn app.main:app --reload  # Servidor
+uv run pytest                          # Tests
+uv run black app/ tests/               # Formateo
+uv run flake8 app/                     # Linting
+uv run pre-commit run --all-files      # Todas las validaciones
 ```
 
 ### Comandos Opcionales (Makefile)
 
 ```bash
-# Desarrollo
+# Atajos que usan uv internamente
 make dev                    # Servidor de desarrollo
 make test                   # Tests completos
 make lint                   # Linting
 make format                 # Formateo
-
-# Changelog
-make changelog              # Ver changelog
-make changelog-unreleased   # Ver cambios pendientes
-
-# Validación completa
 make ci                     # Simular pipeline CI
 ```
 

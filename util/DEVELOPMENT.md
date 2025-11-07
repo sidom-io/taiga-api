@@ -52,7 +52,31 @@ uv run pre-commit install --hook-type pre-push
 
 ## 📋 Flujo de Trabajo Diario
 
-### Desarrollo Normal
+### Opción A: Script con uv (Recomendado)
+
+```bash
+# 1. Iniciar servidor de desarrollo
+uv run uvicorn app.main:app --reload
+
+# 2. Hacer cambios en el código
+
+# 3a. Commits locales rápidos (durante desarrollo)
+./scripts/update.sh --local "feat(auth): agregar validación"
+
+# 3b. Push remoto con análisis (antes de compartir)
+./scripts/update.sh --remote
+# → Muestra análisis de cambios
+# → Opción para generar resumen con LLM
+# → Commit formal + push
+```
+
+**Modo --remote es ideal para:**
+- Antes de hacer push al equipo
+- Generar resumen profesional de cambios
+- Dejar commits entendibles para otros
+- Usar LLM para analizar diff + changelog temporal
+
+### Opción B: Comandos Git Nativos
 
 ```bash
 # 1. Iniciar servidor de desarrollo
@@ -64,7 +88,7 @@ uv run uvicorn app.main:app --reload
 git add .
 git commit -m "feat(scope): descripción"
 
-# Automáticamente se ejecuta:
+# Los hooks ejecutan automáticamente:
 # ✓ Formateo (black, isort)
 # ✓ Linting (flake8, pylint)
 # ✓ Validación de secretos
@@ -76,25 +100,35 @@ git commit -m "feat(scope): descripción"
 git push
 ```
 
-### Comandos Opcionales (Makefile)
+### Comandos con uv (Directos)
 
 ```bash
 # Desarrollo
+uv run uvicorn app.main:app --reload  # Servidor de desarrollo
+uv run pytest                          # Ejecutar tests
+uv run pytest --cov=app                # Tests con cobertura
+
+# Formateo
+uv run black app/ tests/               # Formatear código
+uv run isort app/ tests/               # Ordenar imports
+
+# Linting
+uv run flake8 app/                     # Linting básico
+uv run pylint app/                     # Análisis estático
+
+# Validaciones
+uv run pre-commit run --all-files      # Todas las validaciones
+```
+
+### Comandos Opcionales (Makefile)
+
+```bash
+# Atajos convenientes (usan uv internamente)
 make dev                     # Servidor de desarrollo
 make test                    # Ejecutar tests
 make lint                    # Linting completo
 make format                  # Formatear código
-
-# Validación
 make ci                      # Simular pipeline de CI
-
-# Changelog
-make changelog               # Ver changelog completo
-make changelog-unreleased    # Ver cambios pendientes
-
-# Utilidades
-make clean                   # Limpiar archivos temporales
-make help                    # Ver todos los comandos
 ```
 
 ## 🛡️ Reglas de Seguridad

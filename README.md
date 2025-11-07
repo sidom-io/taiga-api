@@ -173,7 +173,40 @@ Si sigues teniendo problemas:
 
 ## Flujo de Trabajo de Desarrollo
 
-### Desarrollo Diario
+### Opción 1: Script con uv (Recomendado)
+
+#### Desarrollo Local (commits rápidos)
+
+```bash
+# Commit local rápido durante desarrollo
+./scripts/update.sh --local "feat(auth): agregar validación"
+
+# Ejecuta automáticamente:
+# ✓ git add .
+# ✓ Validaciones con uv (formateo, linting, tests)
+# ✓ git commit con actualización de CHANGELOG.md
+```
+
+#### Push Remoto (con análisis)
+
+```bash
+# Análisis completo antes de push
+./scripts/update.sh --remote
+
+# El script:
+# 1. Muestra diff de código
+# 2. Muestra changelog temporal
+# 3. Muestra commits locales
+# 4. Opción para generar resumen con LLM
+# 5. Commit formal + push
+
+# Ideal para:
+# - Antes de hacer push
+# - Generar resumen profesional con LLM
+# - Commits formales para el equipo
+```
+
+### Opción 2: Comandos Git Nativos
 
 ```bash
 # 1. Hacer cambios en el código
@@ -183,7 +216,7 @@ git add .
 # 3. Commit (todo se valida automáticamente)
 git commit -m "feat(scope): descripción del cambio"
 
-# Automáticamente se ejecuta:
+# Los hooks de git ejecutan automáticamente:
 # ✓ Formateo de código (black, isort)
 # ✓ Linting (flake8, pylint)
 # ✓ Validación de secretos
@@ -295,12 +328,43 @@ uv run pre-commit install --hook-type pre-push
 
 ## Ejecución en Desarrollo
 
+### Iniciar Servidor
+
 ```bash
-# Iniciar servidor de desarrollo
+# Usando uv (recomendado)
 uv run uvicorn app.main:app --reload
 
-# El servidor estará disponible en http://localhost:8000
-# Documentación interactiva en http://localhost:8000/docs
+# El servidor estará disponible en:
+# - API: http://localhost:8000
+# - Documentación interactiva: http://localhost:8000/docs
+```
+
+### Ejecutar Tests
+
+```bash
+# Todos los tests
+uv run pytest
+
+# Con cobertura
+uv run pytest --cov=app --cov-report=term-missing
+
+# Solo tests unitarios
+uv run pytest -m "not integration"
+```
+
+### Validaciones Manuales
+
+```bash
+# Ejecutar todas las validaciones pre-commit
+uv run pre-commit run --all-files
+
+# Formatear código
+uv run black app/ tests/
+uv run isort app/ tests/
+
+# Linting
+uv run flake8 app/
+uv run pylint app/
 ```
 
 El servicio quedará disponible en `http://0.0.0.0:8000/`.

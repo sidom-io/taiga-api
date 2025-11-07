@@ -128,7 +128,7 @@ security:secrets:
       import os
       import re
       import sys
-      
+
       # Patrones de secretos a detectar
       secret_patterns = [
           r'TAIGA_PASSWORD=(?!.*example|.*placeholder|.*your_password)',
@@ -137,7 +137,7 @@ security:secrets:
           r'password\s*=\s*[\"\']\w+',
           r'token\s*=\s*[\"\']\w{20,}',
       ]
-      
+
       # Datos de usuario reales prohibidos
       user_data_patterns = [
           r'fpiaggi-ext@sidom\.io',
@@ -145,14 +145,14 @@ security:secrets:
           r'P3p3r1na\.',
           r'taiga\.vuce\.gob\.ar(?!.*example)',
       ]
-      
+
       all_patterns = secret_patterns + user_data_patterns
       violations = []
-      
+
       for root, dirs, files in os.walk('.'):
           # Excluir directorios
           dirs[:] = [d for d in dirs if not d.startswith('.') and d not in ['__pycache__', 'node_modules']]
-          
+
           for file in files:
               if file.endswith(('.py', '.md', '.yml', '.yaml', '.json', '.toml')):
                   filepath = os.path.join(root, file)
@@ -164,7 +164,7 @@ security:secrets:
                                   violations.append(f'{filepath}: {pattern}')
                   except Exception as e:
                       print(f'Warning: No se pudo leer {filepath}: {e}')
-      
+
       if violations:
           print('❌ VIOLACIONES DE SEGURIDAD DETECTADAS:')
           for violation in violations:

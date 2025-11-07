@@ -19,6 +19,7 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 - Soporte para omitir tests en ramas de desarrollo (SKIP_TESTS=1)
 
 ### Changed
+- actualizar documentación con flujo de trabajo simplificado
 - Actualizada configuración de pyproject.toml con dependencias de desarrollo
 - Mejorada documentación con separación clara de responsabilidades
 - Optimizada configuración de herramientas (Black, Flake8, Pylint, MyPy)

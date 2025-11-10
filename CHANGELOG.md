@@ -22,6 +22,13 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 - Soporte para omitir tests en ramas de desarrollo (SKIP_TESTS=1)
 
 ### Changed
+- update with latest API changes
+
+Update CHANGELOG with epic endpoints, dynamic auth, milestones and tags features
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>
 - add epic endpoints with verbose mode, dynamic auth, milestones and tags
 
 - Add GET /epics endpoint with EpicResponse schema

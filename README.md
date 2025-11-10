@@ -47,6 +47,7 @@ Estos puntos requieren definición con VUCE/DGA para completar la implementació
 
 - [Contexto del Proyecto](#contexto-del-proyecto)
 - [Flujo de Operaciones DAI](#flujo-de-operaciones-dai)
+- [Integración MCP con Claude Code](#integración-mcp-con-claude-code)
 - [Requisitos previos](#requisitos-previos)
 - [Configuración](#configuración)
 - [Solución de Problemas de Autenticación](#solución-de-problemas-de-autenticación)
@@ -100,6 +101,35 @@ Borrador → En Carga → Validando → Observada → Lista → Oficializada →
 - 🔵 **KIT Malvina**: Validaciones y cálculos arancelarios
 - 🟢 **DAI Interno**: Eventos del sistema
 - 🟠 **VUCE Central**: Coordinación interorganismos
+
+## Integración MCP con Claude Code
+
+Este proyecto incluye integración nativa con **Model Context Protocol (MCP)**, permitiendo que Claude Code acceda directamente a todas las funcionalidades de la API de Taiga como herramientas nativas.
+
+### ¿Qué es MCP?
+
+MCP es un protocolo abierto que permite a Claude Code conectarse con herramientas externas. Una vez configurado, Claude puede:
+
+- Crear y gestionar tareas en Taiga automáticamente
+- Consultar proyectos, user stories y estados
+- Crear múltiples tareas desde markdown
+- Gestionar el flujo completo de trabajo en Taiga
+
+### Quick Start
+
+1. **Inicia el servidor MCP**:
+```bash
+uv run python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
+2. **Configura Claude Code**:
+```bash
+claude mcp add --transport http taiga-local http://localhost:8000/mcp
+```
+
+3. **Usa Claude normalmente** - detectará automáticamente cuándo necesita interactuar con Taiga
+
+**Documentación completa**: Ver [util/MCP_SETUP.md](util/MCP_SETUP.md) para configuración detallada, deployment en producción y troubleshooting.
 
 ## Relaciones entre Módulos
 
@@ -594,22 +624,77 @@ curl -X POST http://0.0.0.0:8000/tasks \
 
 La respuesta exitosa incluye `id`, `subject`, `project`, `user_story` y `ref`.
 
+### Gestión de Épicas
+
+#### Listar épicas
+
+`GET /epics?project=<id>`
+
+```bash
+# Por ID de proyecto (recomendado)
+curl "http://0.0.0.0:8000/epics?project=3"
+
+# Por slug (también soportado)
+curl "http://0.0.0.0:8000/epics?project=sample-project-slug"
+```
+
+Retorna lista de épicas con campos base (id, ref, subject, project, color, description, created_date).
+
+#### Obtener detalle de épica
+
+`GET /epics/{epic_id}?verbose=<true|false>&include_user_stories=<true|false>&include_tasks=<true|false>`
+
+```bash
+# Solo épica con títulos de user stories
+curl "http://0.0.0.0:8000/epics/5"
+
+# Épica con detalles completos de US y tareas
+curl "http://0.0.0.0:8000/epics/5?verbose=true&include_user_stories=true&include_tasks=true"
+
+# Épica solo con tareas (sin US)
+curl "http://0.0.0.0:8000/epics/5?include_user_stories=false&include_tasks=true"
+```
+
+**Parámetros:**
+- `verbose`: false (default) trae solo títulos de US, true trae todos los campos
+- `include_user_stories`: true (default) incluye US asociadas
+- `include_tasks`: false (default), true incluye todas las tareas de las US
+
+#### Mapa completo del proyecto
+
+`GET /project-map?project=<id_o_slug>&include_tasks=<true|false>`
+
+```bash
+# Estructura completa: Epics → User Stories → Tasks
+curl "http://0.0.0.0:8000/project-map?project=3&include_tasks=true"
+```
+
+Retorna estructura jerárquica completa del proyecto, incluyendo US sin épica asignada.
+
 ### Gestión de Historias de Usuario
 
 #### Listar historias de usuario
 
-`GET /user-stories?project=<id_o_slug>&titles_only=<true|false>`
+`GET /user-stories?project=<id_o_slug>&titles_only=<true|false>&epic=<epic_id>`
 
 ```bash
+# Todas las US de un proyecto
 curl "http://0.0.0.0:8000/user-stories?project=sample-project-slug&titles_only=true"
+
+# Solo US de una épica específica
+curl "http://0.0.0.0:8000/user-stories?project=3&epic=5"
 ```
 
 #### Obtener detalle de historia de usuario
 
-`GET /user-stories/{user_story_id}`
+`GET /user-stories/{user_story_id}?include_tasks=<true|false>`
 
 ```bash
+# Solo la historia
 curl "http://0.0.0.0:8000/user-stories/42"
+
+# Historia con todas sus tareas
+curl "http://0.0.0.0:8000/user-stories/42?include_tasks=true"
 ```
 
 #### Crear historia de usuario
@@ -679,9 +764,56 @@ curl "http://0.0.0.0:8000/projects/vuce-sidom-dai/task-statuses"
 curl "http://0.0.0.0:8000/projects/vuce-sidom-dai/userstory-statuses"
 ```
 
+#### Obtener milestones/sprints
+
+`GET /projects/{project_id}/milestones`
+
+```bash
+curl "http://0.0.0.0:8000/projects/3/milestones"
+```
+
+Retorna información completa de cada milestone: id, name, estimated_start, estimated_finish, closed, total_points, closed_points, user_stories asociadas.
+
+#### Obtener tags del proyecto
+
+`GET /projects/{project_id}/tags`
+
+```bash
+curl "http://0.0.0.0:8000/projects/3/tags"
+```
+
+Retorna diccionario con tags y sus colores: `{"backend": "#FF5733", "frontend": "#33FF57", ...}`
+
+### Autenticación Dinámica
+
+#### Establecer bearer token
+
+`POST /auth/token`
+
+```bash
+curl -X POST http://0.0.0.0:8000/auth/token \
+  -H "Content-Type: application/json" \
+  -d '{
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  }'
+```
+
+Actualiza el token de autenticación sin reiniciar el servidor. Útil cuando el token expira o necesitas cambiar de usuario.
+
+**Response:**
+```json
+{
+  "authenticated": true,
+  "user": "fernandop",
+  "token_preview": "eyJhbGc...aSFrVSc8 (hidden)",
+  "expires_at": "2025-01-10T12:00:00Z",
+  "message": "Bearer token establecido correctamente"
+}
+```
+
 ### Depuración
 
 - `POST /debug/cache/clear` limpia el token cacheado (fuerza nueva autenticación en el próximo request).
-- `GET /debug/connection` verifica la conexión contra Taiga y devuelve el usuario autenticado y la expiración del token.
+- `GET /debug/connection` verifica la conexión contra Taiga y devuelve el usuario autenticado y la expiración del token. Si falla, indica usar `POST /auth/token`.
 - `GET /debug/state` expone el estado actual del cliente (base URL normalizada, si hay token cacheado y el último response recibido).
 - `POST /debug/auth` ejecuta el login y devuelve el status y payload exactamente como responde Taiga (ideal para diagnosticar credenciales).

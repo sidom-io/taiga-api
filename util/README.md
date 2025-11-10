@@ -54,32 +54,6 @@ taiga-fastapi-uv/
     │
     └── llm-docs-proyect/          # Documentación privada (en .gitignore)
         ├── README.md              # Contexto completo del proyecto VUCE-SIDOM
-        ├── graficos.drawio.xml    # Diagramas DrawIO actualizados (DER completo)
-        ├── historias-d4-faltantes.md
-        ├── crear-historias-en-taiga.md
-        ├── ejemplo-uso-bulk-api.md
-        ├── TAIGA-DATA-README.md
-        │
-        ├── Desgloses técnicos de HU:
-        ├── tareas-hu125-paso1-precaratula.md
-        ├── tareas-hu126-carga-masiva-csv.md
-        ├── tareas-hu26-paso4-validacion-docs.md
-        ├── tareas-hu27-paso5-bultos.md
-        ├── tareas-hu28-paso6-presupuesto.md
-        ├── tareas-hu128-notif-historicas-mejoradas.md
-        ├── tareas-hu129-menu-lateral.md
-        ├── tareas-hu130-actualizacion-contextual.md
-        ├── tareas-hu-pago-vep.md
-        ├── tareas-hu-polizas-cauciones.md
-        │
-        ├── Archivos bulk para Taiga:
-        ├── bulk-tareas-hu26.md
-        ├── bulk-tareas-hu27.md
-        ├── bulk-tareas-hu28.md
-        ├── bulk-tareas-hu125.md
-        ├── bulk-tareas-pago-vep.md
-        ├── bulk-tareas-polizas-cauciones.md
-        ├── bulk-tareas-oficializacion.md
         │
         └── Datos JSON de Taiga:
             ├── taiga-user-stories-dai.json

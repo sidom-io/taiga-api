@@ -22,6 +22,23 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 - Soporte para omitir tests en ramas de desarrollo (SKIP_TESTS=1)
 
 ### Changed
+- add epic endpoints with verbose mode, dynamic auth, milestones and tags
+
+- Add GET /epics endpoint with EpicResponse schema
+- Add GET /epics/{epic_id} with verbose mode for full details
+- Add dynamic bearer token auth via POST /auth/token
+- Modify GET /debug/connection to return AuthStatusResponse
+- Add GET /projects/{project_id}/milestones endpoint
+- Add GET /projects/{project_id}/tags endpoint
+- Add UserStoryDetailResponse schema with task inclusion
+- Add tag normalization with field_validator (flatten nested lists)
+- Add ConfigDict(extra='allow') to accept all Taiga API fields
+- Add fastapi-mcp dependency for MCP integration
+- Add API documentation with endpoints, schemas, and code statistics
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>
 - docs(d5): documentar catálogo D5 y actualizar referencias
 
 Cambios incluidos:

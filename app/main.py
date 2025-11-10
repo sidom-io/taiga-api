@@ -4,13 +4,19 @@ from typing import Annotated, List, Union
 
 from dotenv import find_dotenv, load_dotenv
 from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi_mcp import FastApiMCP
 
 from app.markdown_parser import MarkdownTaskParser
 from app.schemas import (
+    AuthStatusResponse,
     BulkTaskFromMarkdownRequest,
     BulkTaskResponse,
+    EpicDetailResponse,
+    EpicResponse,
     TaskCreateRequest,
     TaskResponse,
+    TokenSetRequest,
+    UserStoryDetailResponse,
     UserStoryResponse,
 )
 from app.taiga_client import TaigaClient, TaigaClientError
@@ -23,6 +29,10 @@ else:
     load_dotenv(find_dotenv(), override=True)
 
 app = FastAPI(title="Taiga Task API")
+
+# Configurar MCP Server
+mcp = FastApiMCP(app)
+mcp.mount()
 
 
 def _load_env(variable: str) -> str:
@@ -99,17 +109,153 @@ async def create_task(payload: TaskCreateRequest, taiga_client: TaigaClientDep) 
     return TaskResponse(**task)
 
 
-@app.get("/epics")
+@app.get("/epics", response_model=List[EpicResponse])
 async def list_epics(
-    project: Annotated[Union[int, str], Query(..., description="ID o slug de proyecto")],
+    project: Annotated[
+        Union[int, str], Query(..., description="ID del proyecto (int, recomendado) o slug (str)")
+    ],
     taiga_client: TaigaClientDep,
-) -> List[dict]:
+) -> List[EpicResponse]:
+    """Lista todas las épicas de un proyecto.
+
+    Normalmente se usa el ID del proyecto (ej: 3), no el slug.
+    """
     try:
         epics = await taiga_client.list_epics(project=project)
     except TaigaClientError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    return epics
+    return [EpicResponse(**epic) for epic in epics]
+
+
+@app.get("/epics/{epic_id}", response_model=EpicDetailResponse)
+async def get_epic(
+    epic_id: int,
+    taiga_client: TaigaClientDep,
+    verbose: Annotated[
+        bool, Query(description="Incluir detalles completos de US y tareas")
+    ] = False,
+    include_user_stories: Annotated[bool, Query(description="Incluir user stories")] = True,
+    include_tasks: Annotated[bool, Query(description="Incluir tareas")] = False,
+) -> EpicDetailResponse:
+    """Obtiene el detalle de una épica con sus user stories y tareas.
+
+    Por defecto trae solo títulos de user stories. Con verbose=true trae todos los detalles.
+    """
+    try:
+        # Obtener épica base (reutilizando método existente)
+        epic = await taiga_client.get_epic(epic_id)
+
+        result = EpicDetailResponse(**epic)
+
+        # Si se pide incluir user stories
+        if include_user_stories:
+            # Reutilizar método existente con filtro epic
+            user_stories = await taiga_client.list_user_stories(
+                project=epic["project"],
+                titles_only=not verbose,  # Si verbose, traer detalles completos
+                epic=epic_id,
+            )
+
+            result.user_stories = [UserStoryResponse(**us) for us in user_stories]
+            result.total_user_stories = len(user_stories)
+
+            # Si se pide incluir tareas
+            if include_tasks:
+                tasks_list = []
+                for us in user_stories:
+                    # Reutilizar método existente
+                    tasks = await taiga_client.list_tasks_for_user_story(us["id"])
+                    tasks_list.extend(tasks)
+
+                result.tasks = [TaskResponse(**task) for task in tasks_list]
+                result.total_tasks = len(tasks_list)
+
+        return result
+
+    except TaigaClientError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.get("/project-map")
+async def get_project_map(
+    project: Annotated[Union[int, str], Query(..., description="ID o slug de proyecto")],
+    taiga_client: TaigaClientDep,
+    include_tasks: Annotated[bool, Query(description="Incluir tareas en el mapa")] = True,
+) -> dict:
+    """Retorna mapa completo: Epics → User Stories → Tasks
+
+    Usa el filtro epic del API para obtener las user stories de cada epic.
+    Opcionalmente incluye las tareas de cada user story.
+    """
+    try:
+        # Obtener epics
+        epics = await taiga_client.list_epics(project=project)
+
+        # Obtener user stories sin epic (pasando epic=None explícitamente no funciona,
+        # así que obtenemos todas y filtramos las que no están en ningún epic)
+        all_us = await taiga_client.list_user_stories(project=project, titles_only=False)
+
+        # Track which user stories belong to epics
+        us_in_epics = set()
+
+        result = {
+            "project": project,
+            "total_epics": len(epics),
+            "total_user_stories": 0,
+            "epics": [],
+            "user_stories_without_epic": [],
+        }
+
+        # Para cada epic, obtener sus user stories usando el filtro epic
+        for epic in epics:
+            epic_id = epic["id"]
+
+            # Obtener user stories de este epic usando el filtro
+            epic_user_stories = await taiga_client.list_user_stories(
+                project=project, titles_only=False, epic=epic_id
+            )
+
+            # Track user story IDs
+            for us in epic_user_stories:
+                us_in_epics.add(us["id"])
+
+            result["total_user_stories"] += len(epic_user_stories)
+
+            # Si se pide incluir tasks, obtener las tasks de cada user story
+            if include_tasks:
+                for us in epic_user_stories:
+                    tasks = await taiga_client.list_tasks_for_user_story(us["id"])
+                    us["tasks"] = tasks
+                    us["total_tasks"] = len(tasks)
+
+            result["epics"].append(
+                {
+                    "id": epic["id"],
+                    "ref": epic["ref"],
+                    "subject": epic["subject"],
+                    "color": epic.get("color"),
+                    "total_user_stories": len(epic_user_stories),
+                    "user_stories": epic_user_stories,
+                }
+            )
+
+        # User stories sin epic son las que no aparecieron en ningún epic
+        us_without_epic = [us for us in all_us if us["id"] not in us_in_epics]
+
+        if include_tasks:
+            for us in us_without_epic:
+                tasks = await taiga_client.list_tasks_for_user_story(us["id"])
+                us["tasks"] = tasks
+                us["total_tasks"] = len(tasks)
+
+        result["user_stories_without_epic"] = us_without_epic
+        result["total_user_stories"] += len(us_without_epic)
+
+        return result
+
+    except TaigaClientError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.post("/user-stories", response_model=UserStoryResponse)
@@ -135,23 +281,40 @@ async def list_user_stories(
     project: Annotated[Union[int, str], Query(..., description="ID o slug de proyecto")],
     taiga_client: TaigaClientDep,
     titles_only: Annotated[bool, Query(description="Retorna solo id y título")] = False,
+    epic: Annotated[int | None, Query(description="Filtrar por ID de epic")] = None,
 ) -> List[UserStoryResponse]:
     try:
-        stories = await taiga_client.list_user_stories(project=project, titles_only=titles_only)
+        stories = await taiga_client.list_user_stories(
+            project=project, titles_only=titles_only, epic=epic
+        )
     except TaigaClientError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     return [UserStoryResponse(**story) for story in stories]
 
 
-@app.get("/user-stories/{user_story_id}", response_model=UserStoryResponse)
-async def get_user_story(user_story_id: int, taiga_client: TaigaClientDep) -> UserStoryResponse:
+@app.get("/user-stories/{user_story_id}", response_model=UserStoryDetailResponse)
+async def get_user_story(
+    user_story_id: int,
+    taiga_client: TaigaClientDep,
+    include_tasks: Annotated[bool, Query(description="Incluir tareas de esta user story")] = False,
+) -> UserStoryDetailResponse:
+    """Obtiene el detalle de una user story con todos sus campos.
+
+    Con include_tasks=true trae todas las tareas asociadas con full detalle.
+    """
     try:
         story = await taiga_client.get_user_story(user_story_id)
+        result = UserStoryDetailResponse(**story)
+
+        if include_tasks:
+            tasks = await taiga_client.list_tasks_for_user_story(user_story_id)
+            result.tasks = [TaskResponse(**task) for task in tasks]
+            result.total_tasks = len(tasks)
+
+        return result
     except TaigaClientError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-
-    return UserStoryResponse(**story)
 
 
 @app.patch("/user-stories/{user_story_id}", response_model=UserStoryResponse)
@@ -191,12 +354,59 @@ async def clear_cache(taiga_client: TaigaClientDep) -> dict:
     return state
 
 
-@app.get("/debug/connection")
-async def debug_connection(taiga_client: TaigaClientDep) -> dict:
+@app.get("/debug/connection", response_model=AuthStatusResponse)
+async def debug_connection(taiga_client: TaigaClientDep) -> AuthStatusResponse:
+    """Verifica la conexión y autenticación con Taiga.
+
+    Si falla la autenticación, retorna instrucciones para usar POST /auth/token.
+    """
     try:
-        return await taiga_client.check_connection()
+        result = await taiga_client.check_connection()
+        return AuthStatusResponse(
+            authenticated=True,
+            user=result.get("user"),
+            token_preview=None,  # Por seguridad, no exponemos el token aquí
+            expires_at=result.get("token_expires_at"),
+        )
     except TaigaClientError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        return AuthStatusResponse(
+            authenticated=False,
+            error=str(exc),
+            message=(
+                "Autenticación fallida. Use POST /auth/token "
+                "para establecer un bearer token válido."
+            ),
+        )
+
+
+@app.post("/auth/token", response_model=AuthStatusResponse)
+async def set_auth_token(
+    payload: TokenSetRequest, taiga_client: TaigaClientDep
+) -> AuthStatusResponse:
+    """Establece un bearer token de forma dinámica.
+
+    Útil para actualizar el token sin reiniciar el servidor.
+    El token se almacena en memoria durante el ciclo de vida del servidor.
+    """
+    try:
+        # Establecer el nuevo token
+        await taiga_client.set_auth_token(payload.token)
+
+        # Verificar que el token funciona
+        result = await taiga_client.check_connection()
+
+        return AuthStatusResponse(
+            authenticated=True,
+            user=result.get("user"),
+            token_preview=taiga_client._mask_token(payload.token),
+            expires_at=result.get("token_expires_at"),
+            message="Bearer token establecido correctamente",
+        )
+
+    except TaigaClientError as exc:
+        raise HTTPException(
+            status_code=401, detail=f"Token inválido o expirado: {str(exc)}"
+        ) from exc
 
 
 @app.get("/debug/state")
@@ -310,6 +520,42 @@ async def get_userstory_statuses(
         return await taiga_client.get_userstory_statuses(project_id)
     except TaigaClientError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.get("/projects/{project_id}/milestones")
+async def get_project_milestones(
+    project_id: Union[int, str], taiga_client: TaigaClientDep
+) -> List[dict]:
+    """Lista todos los sprints/milestones de un proyecto.
+
+    Retorna información completa de cada milestone incluyendo:
+    - id, name, slug
+    - estimated_start, estimated_finish
+    - closed, total_points, closed_points
+    - user_stories asociadas
+    """
+    try:
+        milestones = await taiga_client.list_milestones(project_id)
+    except TaigaClientError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    return milestones
+
+
+@app.get("/projects/{project_id}/tags")
+async def get_project_tags(project_id: Union[int, str], taiga_client: TaigaClientDep) -> dict:
+    """Obtiene todas las etiquetas (tags) del proyecto con sus colores.
+
+    Retorna un diccionario donde:
+    - key: nombre de la etiqueta
+    - value: código de color hexadecimal o null si no tiene color
+    """
+    try:
+        tags = await taiga_client.get_project_tags(project_id)
+    except TaigaClientError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    return tags
 
 
 @app.get("/docs/bulk-markdown-example")

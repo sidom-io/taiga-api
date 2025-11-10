@@ -22,6 +22,9 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 - Soporte para omitir tests en ramas de desarrollo (SKIP_TESTS=1)
 
 ### Changed
+- docs(d5): documentar catálogo D5 y actualizar referencias
+
+Cambios incluidos:
 - documentar catálogo D5 y actualizar referencias
 
 - Crear util/d5-catalogo-documentacion.md con modelo completo

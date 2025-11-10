@@ -170,10 +170,16 @@ class TaigaClient:
         if isinstance(project, int):
             return project
 
+        # Si es un string, verificar si es un número
         slug = project.strip()
         if not slug:
             raise TaigaClientError("El slug del proyecto no puede estar vacío")
 
+        # Intentar convertir a int si es un string numérico
+        if slug.isdigit():
+            return int(slug)
+
+        # Si no es numérico, buscar por slug
         client = await self._ensure_client()
         token = await self._get_token()
         headers = self._build_headers(token)
@@ -226,7 +232,10 @@ class TaigaClient:
         return self._json_or_error(response)
 
     async def list_user_stories(
-        self, project: Union[int, str], titles_only: bool = False
+        self,
+        project: Union[int, str],
+        titles_only: bool = False,
+        epic: Union[int, None] = None,
     ) -> List[Dict[str, Any]]:
         client = await self._ensure_client()
         project_id = await self._resolve_project(project)
@@ -234,18 +243,38 @@ class TaigaClient:
         headers = self._build_headers(token)
         params: Dict[str, Any] = {"project": project_id}
         if titles_only:
-            params["only_fields"] = "id,subject"
+            params["only_fields"] = "id,subject,epic"
+        if epic is not None:
+            params["epic"] = epic
 
-        try:
-            response = await client.get("userstories", params=params, headers=headers)
-        except httpx.RequestError as exc:
-            raise TaigaClientError(f"No se pudieron obtener las historias: {exc}") from exc
-        self._record_response(response)
+        # Iterar todas las páginas
+        all_stories = []
+        page = 1
+        while True:
+            params_with_page = {**params, "page": page}
+            try:
+                response = await client.get("userstories", params=params_with_page, headers=headers)
+            except httpx.RequestError as exc:
+                raise TaigaClientError(f"No se pudieron obtener las historias: {exc}") from exc
+            self._record_response(response)
 
-        if response.status_code != 200:
-            raise TaigaClientError(self._parse_error(response))
+            if response.status_code != 200:
+                raise TaigaClientError(self._parse_error(response))
 
-        return self._json_list_or_error(response)
+            stories = self._json_list_or_error(response)
+            if not stories:
+                break
+
+            all_stories.extend(stories)
+
+            # Verificar si hay más páginas
+            x_pagination_next = response.headers.get("x-pagination-next")
+            if not x_pagination_next:
+                break
+
+            page += 1
+
+        return all_stories
 
     async def list_epics(self, project: Union[int, str]) -> List[Dict[str, Any]]:
         """Lista todas las épicas de un proyecto."""
@@ -265,6 +294,23 @@ class TaigaClient:
             raise TaigaClientError(self._parse_error(response))
 
         return self._json_list_or_error(response)
+
+    async def get_epic(self, epic_id: int) -> Dict[str, Any]:
+        """Obtiene el detalle de una épica por su ID."""
+        client = await self._ensure_client()
+        token = await self._get_token()
+        headers = self._build_headers(token)
+
+        try:
+            response = await client.get(f"epics/{epic_id}", headers=headers)
+        except httpx.RequestError as exc:
+            raise TaigaClientError(f"No se pudo obtener la épica {epic_id}: {exc}") from exc
+        self._record_response(response)
+
+        if response.status_code != 200:
+            raise TaigaClientError(self._parse_error(response))
+
+        return self._json_or_error(response)
 
     async def create_user_story(
         self,
@@ -367,6 +413,16 @@ class TaigaClient:
         async with self._auth_lock:
             self._token = None
             self._token_expires_at = None
+
+    async def set_auth_token(self, token: str) -> None:
+        """Establece un bearer token de forma dinámica.
+
+        Útil para actualizar el token en runtime sin reiniciar el cliente.
+        """
+        async with self._auth_lock:
+            self.auth_token = token
+            self._cache_token(token)
+            logger.info("Bearer token actualizado dinámicamente")
 
     async def check_connection(self) -> Dict[str, Any]:
         token = await self._get_token()
@@ -697,6 +753,43 @@ class TaigaClient:
             raise TaigaClientError(self._parse_error(response))
 
         return self._json_list_or_error(response)
+
+    async def list_milestones(self, project: Union[int, str]) -> List[Dict[str, Any]]:
+        """Lista todos los sprints/milestones de un proyecto."""
+        client = await self._ensure_client()
+        project_id = await self._resolve_project(project)
+        token = await self._get_token()
+        headers = self._build_headers(token)
+
+        params = {"project": project_id}
+        try:
+            response = await client.get("milestones", params=params, headers=headers)
+        except httpx.RequestError as exc:
+            raise TaigaClientError(f"No se pudieron obtener los milestones: {exc}") from exc
+        self._record_response(response)
+
+        if response.status_code != 200:
+            raise TaigaClientError(self._parse_error(response))
+
+        return self._json_list_or_error(response)
+
+    async def get_project_tags(self, project: Union[int, str]) -> Dict[str, Any]:
+        """Obtiene las etiquetas y sus colores de un proyecto."""
+        client = await self._ensure_client()
+        project_id = await self._resolve_project(project)
+        token = await self._get_token()
+        headers = self._build_headers(token)
+
+        try:
+            response = await client.get(f"projects/{project_id}/tags_colors", headers=headers)
+        except httpx.RequestError as exc:
+            raise TaigaClientError(f"No se pudieron obtener las etiquetas: {exc}") from exc
+        self._record_response(response)
+
+        if response.status_code != 200:
+            raise TaigaClientError(self._parse_error(response))
+
+        return self._json_or_error(response)
 
     @staticmethod
     def _parse_error(response: httpx.Response) -> str:

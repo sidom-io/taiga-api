@@ -4,9 +4,16 @@ from typing import Annotated, List, Union
 
 from dotenv import find_dotenv, load_dotenv
 from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
 from fastapi_mcp import FastApiMCP
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app import crud
+from app.auth import get_optional_auth, require_auth, session_store
+from app.database import close_db, get_db, init_db
 from app.markdown_parser import MarkdownTaskParser
+from app.sync_service import sync_all_projects, sync_project
 from app.schemas import (
     AuthStatusResponse,
     BulkTaskFromMarkdownRequest,
@@ -34,6 +41,9 @@ app = FastAPI(title="Taiga Task API")
 mcp = FastApiMCP(app)
 mcp.mount()
 
+# Configure Jinja2 templates
+templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
+
 
 def _load_env(variable: str) -> str:
     value = os.getenv(variable)
@@ -45,15 +55,8 @@ def _load_env(variable: str) -> str:
 def _build_taiga_client() -> TaigaClient:
     base_url = _load_env("TAIGA_BASE_URL")
 
-    # Intentar obtener token de API primero
-    auth_token = os.getenv("TAIGA_AUTH_TOKEN")
-
-    # Si no hay token, usar usuario/contraseña
-    username = None
-    password = None
-    if not auth_token:
-        username = _load_env("TAIGA_USERNAME")
-        password = _load_env("TAIGA_PASSWORD")
+    # Token viene de la sesión (session_store), NO del .env
+    auth_token = get_optional_auth()
 
     token_ttl_raw = os.getenv("TAIGA_TOKEN_TTL", "82800")
     try:
@@ -63,8 +66,8 @@ def _build_taiga_client() -> TaigaClient:
 
     return TaigaClient(
         base_url=base_url,
-        username=username,
-        password=password,
+        username=None,  # No usar username/password
+        password=None,  # No usar username/password
         auth_token=auth_token,
         token_ttl=token_ttl,
     )
@@ -72,6 +75,10 @@ def _build_taiga_client() -> TaigaClient:
 
 @app.on_event("startup")
 async def startup_event() -> None:
+    # Initialize database
+    await init_db()
+
+    # Initialize Taiga client
     client = _build_taiga_client()
     await client.start()
     app.state.taiga_client = client
@@ -79,9 +86,13 @@ async def startup_event() -> None:
 
 @app.on_event("shutdown")
 async def shutdown_event() -> None:
+    # Close Taiga client
     client: TaigaClient | None = getattr(app.state, "taiga_client", None)
     if client is not None:
         await client.close()
+
+    # Close database connections
+    await close_db()
 
 
 def get_taiga_client() -> TaigaClient:
@@ -354,42 +365,59 @@ async def clear_cache(taiga_client: TaigaClientDep) -> dict:
     return state
 
 
-@app.get("/debug/connection", response_model=AuthStatusResponse)
-async def debug_connection(taiga_client: TaigaClientDep) -> AuthStatusResponse:
-    """Verifica la conexión y autenticación con Taiga.
-
-    Si falla la autenticación, retorna instrucciones para usar POST /auth/token.
+@app.get("/auth", response_model=AuthStatusResponse)
+async def get_auth_status() -> AuthStatusResponse:
     """
-    try:
-        result = await taiga_client.check_connection()
+    GET /auth - Verifica el estado del token actual.
+
+    Retorna información sobre si hay un token válido en la sesión
+    e instrucciones para obtener y configurar uno si no existe.
+    """
+    token_info = session_store.get_token_info()
+
+    if token_info and token_info["is_valid"]:
         return AuthStatusResponse(
             authenticated=True,
-            user=result.get("user"),
-            token_preview=None,  # Por seguridad, no exponemos el token aquí
-            expires_at=result.get("token_expires_at"),
+            message="Token válido encontrado en sesión",
+            expires_at=token_info.get("expires_at"),
         )
-    except TaigaClientError as exc:
+    else:
         return AuthStatusResponse(
             authenticated=False,
-            error=str(exc),
-            message=(
-                "Autenticación fallida. Use POST /auth/token "
-                "para establecer un bearer token válido."
+            message="No hay token válido en la sesión",
+            error=(
+                "Para obtener tu token de Taiga: "
+                "1. Inicia sesión en Taiga, "
+                "2. Abre DevTools del navegador (F12), "
+                "3. Ve a Application/Storage > Cookies, "
+                "4. Copia el valor de 'auth-token', "
+                "5. Envíalo via POST /auth con {\"token\": \"tu_token_aqui\"}"
             ),
         )
 
 
-@app.post("/auth/token", response_model=AuthStatusResponse)
-async def set_auth_token(
-    payload: TokenSetRequest, taiga_client: TaigaClientDep
-) -> AuthStatusResponse:
-    """Establece un bearer token de forma dinámica.
+@app.post("/auth", response_model=AuthStatusResponse)
+async def set_auth_token(payload: TokenSetRequest, taiga_client: TaigaClientDep) -> AuthStatusResponse:
+    """
+    POST /auth - Establece el token de autenticación para la sesión.
 
-    Útil para actualizar el token sin reiniciar el servidor.
-    El token se almacena en memoria durante el ciclo de vida del servidor.
+    El token se almacena en memoria (session_store) y se usa para todas las
+    peticiones subsecuentes. No se persiste en .env ni en disco.
+
+    Args:
+        payload: Objeto con el token de Taiga
+
+    Returns:
+        Estado de autenticación con información del usuario si el token es válido
+
+    Raises:
+        HTTPException: Si el token es inválido
     """
     try:
-        # Establecer el nuevo token
+        # Guardar token en session store
+        session_store.set_token(payload.token)
+
+        # Actualizar el token en el cliente de Taiga también
         await taiga_client.set_auth_token(payload.token)
 
         # Verificar que el token funciona
@@ -400,13 +428,200 @@ async def set_auth_token(
             user=result.get("user"),
             token_preview=taiga_client._mask_token(payload.token),
             expires_at=result.get("token_expires_at"),
-            message="Bearer token establecido correctamente",
+            message="Token establecido correctamente en la sesión",
         )
 
     except TaigaClientError as exc:
+        # Limpiar token inválido de la sesión
+        session_store.clear()
         raise HTTPException(
             status_code=401, detail=f"Token inválido o expirado: {str(exc)}"
         ) from exc
+
+
+@app.post("/sync")
+async def sync_data(
+    taiga_client: TaigaClientDep,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _token: Annotated[str, Depends(require_auth)],
+    project: Annotated[
+        Union[int, str, None],
+        Query(description="ID o slug del proyecto a sincronizar. Si no se especifica, sincroniza todos"),
+    ] = None,
+) -> dict:
+    """
+    POST /sync - Sincroniza datos de Taiga a la base de datos local.
+
+    Sincroniza proyectos, épicas, user stories, tareas y tags desde Taiga API
+    a la base de datos local SQLite/PostgreSQL.
+
+    Args:
+        project: Opcional. ID o slug del proyecto a sincronizar.
+                Si no se especifica, sincroniza todos los proyectos accesibles.
+
+    Returns:
+        Estadísticas de la sincronización (items creados/actualizados/errores)
+
+    Requires:
+        Token de autenticación válido (via POST /auth)
+    """
+    from app.sync_service import SyncStats
+
+    stats = SyncStats()
+
+    try:
+        if project is None:
+            # Sync all projects
+            stats = await sync_all_projects(db, taiga_client)
+        else:
+            # Sync specific project
+            await sync_project(db, taiga_client, project, stats)
+
+        return {
+            "message": "Sincronización completada",
+            "project": project if project else "all",
+            "statistics": stats.to_dict(),
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error durante la sincronización: {str(e)}",
+        ) from e
+
+
+@app.get("/table-map", response_class=HTMLResponse)
+async def get_table_map(
+    project: Annotated[
+        Union[int, str],
+        Query(..., description="ID o slug del proyecto a visualizar"),
+    ],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> HTMLResponse:
+    """
+    GET /table-map - Visualiza el mapeo completo de datos sincronizados en HTML.
+
+    Genera una tabla interactiva mostrando la jerarquía:
+    Epics → User Stories → Tasks
+
+    Args:
+        project: ID o slug del proyecto a visualizar
+
+    Returns:
+        Página HTML con tabla interactiva del mapeo completo
+
+    Features:
+        - Búsqueda en tiempo real
+        - Filtros por estado (open/closed)
+        - Secciones colapsables
+        - Estadísticas del proyecto
+        - User stories huérfanas (sin epic)
+    """
+    from sqlalchemy import func, select
+    from sqlalchemy.orm import selectinload
+
+    from app.models import Epic, Project, Task, UserStory
+
+    # Get project from DB
+    # Try to parse as int first (Taiga ID)
+    try:
+        project_id = int(project)
+        db_project = await crud.get_project_by_taiga_id(db, project_id)
+    except (ValueError, TypeError):
+        # If not an int, treat as slug
+        result = await db.execute(select(Project).where(Project.slug == str(project)))
+        db_project = result.scalar_one_or_none()
+
+    if not db_project:
+        raise HTTPException(status_code=404, detail=f"Project '{project}' not found in database. Run POST /sync?project={project} first.")
+
+    # Get epics with their user stories and tasks (with tags eagerly loaded)
+    epics_result = await db.execute(
+        select(Epic)
+        .where(Epic.project_id == db_project.id)
+        .options(
+            selectinload(Epic.user_stories).selectinload(UserStory.tags),
+            selectinload(Epic.user_stories).selectinload(UserStory.tasks).selectinload(Task.tags)
+        )
+        .order_by(Epic.ref.desc())
+    )
+    epics = list(epics_result.scalars().all())
+
+    # Add total_tasks to each epic
+    for epic in epics:
+        epic.total_tasks = sum(len(us.tasks) for us in epic.user_stories)
+
+    # Get orphan user stories (without epic) with tags eagerly loaded
+    orphans_result = await db.execute(
+        select(UserStory)
+        .where(UserStory.project_id == db_project.id, UserStory.epic_id.is_(None))
+        .options(
+            selectinload(UserStory.tags),
+            selectinload(UserStory.tasks).selectinload(Task.tags)
+        )
+        .order_by(UserStory.ref.desc())
+    )
+    orphan_user_stories = list(orphans_result.scalars().all())
+
+    # Calculate statistics
+    stats_result = await db.execute(
+        select(
+            func.count(Epic.id).label("epics"),
+            func.count(UserStory.id).label("user_stories"),
+            func.count(Task.id).label("tasks"),
+        )
+        .select_from(Epic)
+        .outerjoin(UserStory, Epic.id == UserStory.epic_id)
+        .outerjoin(Task, UserStory.id == Task.user_story_id)
+        .where(Epic.project_id == db_project.id)
+    )
+    stats_row = stats_result.one()
+
+    # Count total user stories including orphans
+    total_us_result = await db.execute(
+        select(func.count(UserStory.id))
+        .where(UserStory.project_id == db_project.id)
+    )
+    total_us = total_us_result.scalar()
+
+    # Count total tasks including orphan US tasks
+    total_tasks_result = await db.execute(
+        select(func.count(Task.id))
+        .where(Task.project_id == db_project.id)
+    )
+    total_tasks = total_tasks_result.scalar()
+
+    # Count tags
+    from app.models import Tag
+    tags_result = await db.execute(
+        select(func.count(Tag.id))
+        .where(Tag.project_id == db_project.id)
+    )
+    total_tags = tags_result.scalar()
+
+    stats = {
+        "epics": len(epics),
+        "user_stories": total_us,
+        "tasks": total_tasks,
+        "tags": total_tags,
+    }
+
+    # Generate AI reorganization proposals
+    from app.ai_reorganizer import AIReorganizer
+    ai = AIReorganizer()
+    analysis = ai.analyze_project(epics, orphan_user_stories)
+
+    return templates.TemplateResponse(
+        "table_map.html",
+        {
+            "request": {},  # Jinja2 requires request object
+            "project": db_project,
+            "epics": epics,
+            "orphan_user_stories": orphan_user_stories,
+            "stats": stats,
+            "ai_analysis": analysis,
+        },
+    )
 
 
 @app.get("/debug/state")

@@ -35,9 +35,10 @@ class TaigaClient:
         self._auth_lock = asyncio.Lock()
         self._last_response_meta: Dict[str, Any] = {}
 
-        # Validar que tenemos credenciales válidas
-        if not auth_token and not (username and password):
-            raise ValueError("Se requiere auth_token o username/password")
+        # Validación de credenciales ahora es opcional
+        # Si no hay credenciales al iniciar, se pueden setear después con set_auth_token()
+        # if not auth_token and not (username and password):
+        #     raise ValueError("Se requiere auth_token o username/password")
 
     async def start(self) -> None:
         """Inicializa el cliente HTTP asíncrono."""

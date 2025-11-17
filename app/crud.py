@@ -12,7 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.models import Epic, Project, Tag, Task, TaskTag, UserStory, UserStoryTag
+from app.models import DraftBoard, Epic, Project, Tag, Task, TaskTag, UserStory, UserStoryTag
 
 
 def parse_datetime(value: any) -> datetime:
@@ -37,6 +37,12 @@ def parse_datetime(value: any) -> datetime:
 async def get_project_by_taiga_id(db: AsyncSession, taiga_id: int) -> Optional[Project]:
     """Get project by Taiga ID."""
     result = await db.execute(select(Project).where(Project.taiga_id == taiga_id))
+    return result.scalar_one_or_none()
+
+
+async def get_project_by_slug(db: AsyncSession, slug: str) -> Optional[Project]:
+    """Get project by slug."""
+    result = await db.execute(select(Project).where(Project.slug == slug))
     return result.scalar_one_or_none()
 
 
@@ -373,3 +379,32 @@ async def sync_task_tags(db: AsyncSession, task: Task, tag_names: List[str]) -> 
         db.add(task_tag)
 
     await db.commit()
+
+
+# ============================================================================
+# DRAFT BOARD CRUD
+# ============================================================================
+
+
+async def get_draft_board_state(db: AsyncSession, project_id: int) -> Optional[dict]:
+    """Return the stored draft board state for a project."""
+    result = await db.execute(select(DraftBoard).where(DraftBoard.project_id == project_id))
+    board = result.scalar_one_or_none()
+    return board.state if board else None
+
+
+async def save_draft_board_state(db: AsyncSession, project_id: int, state: dict) -> DraftBoard:
+    """Create or update the draft board state for a project."""
+    result = await db.execute(select(DraftBoard).where(DraftBoard.project_id == project_id))
+    board = result.scalar_one_or_none()
+
+    if board:
+        board.state = state
+        board.updated_at = datetime.utcnow()
+    else:
+        board = DraftBoard(project_id=project_id, state=state, updated_at=datetime.utcnow())
+        db.add(board)
+
+    await db.commit()
+    await db.refresh(board)
+    return board

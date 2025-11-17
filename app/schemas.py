@@ -131,3 +131,9 @@ class AuthStatusResponse(BaseModel):
     expires_at: Optional[datetime] = None
     error: Optional[str] = None
     message: Optional[str] = None
+
+
+class DraftStatePayload(BaseModel):
+    """Payload para persistir el estado del borrador."""
+
+    state: dict

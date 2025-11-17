@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Taiga Data Map - {{ project.name }}</title>
+    <!-- SortableJS for Drag & Drop -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.1/Sortable.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -18,9 +20,8 @@
             padding: 20px;
         }
 
-        .container {
-            max-width: 1600px;
-            margin: 0 auto;
+        .page-wrapper {
+            width: 100%;
             background: white;
             border-radius: 8px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
@@ -280,6 +281,834 @@
             color: #6c757d;
         }
 
+        .draft-layout {
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .draft-hero {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+        }
+
+        .draft-instructions {
+            padding: 20px;
+            background: #fff3cd;
+            border-radius: 8px;
+            border-left: 4px solid #ffc107;
+            color: #856404;
+        }
+
+        .draft-layout.fullscreen-active {
+            padding: 12px;
+            gap: 12px;
+            height: 100%;
+        }
+
+        .draft-layout.fullscreen-active .draft-hero,
+        .draft-layout.fullscreen-active .draft-instructions {
+            display: none;
+        }
+
+        .draft-layout.fullscreen-active #story-mapping-wrapper {
+            max-height: none;
+            height: calc(100vh - 24px);
+        }
+
+        /* User Story Card Styles for Draft */
+        .story-card {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 12px;
+            min-width: 0;
+            width: 100%;
+            align-self: start;
+            cursor: move;
+            transition: all 0.2s;
+            break-inside: avoid;
+            min-height: 150px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .story-card:hover {
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            transform: translateY(-2px);
+        }
+
+        .story-card.sortable-ghost {
+            opacity: 0.4;
+            background: #f8f9fa;
+        }
+
+        .story-card.sortable-drag {
+            opacity: 0.8;
+        }
+
+        .story-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .story-card-title {
+            font-weight: 600;
+            font-size: 14px;
+            color: #2c3e50;
+            flex: 1;
+        }
+
+        .story-card-meta {
+            font-size: 11px;
+            color: #6c757d;
+            margin-top: 4px;
+        }
+
+        .story-card-description {
+            font-size: 12px;
+            color: #4b5563;
+            margin-top: 6px;
+            line-height: 1.4;
+            min-height: 40px;
+        }
+
+        .story-card-tags {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .story-card-tags-wrapper {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .story-card-tags .tag {
+            background: #eef2ff;
+            color: #3730a3;
+        }
+
+        .story-tag-gear {
+            border: none;
+            background: #0f172a;
+            color: #fff;
+            border-radius: 50%;
+            width: 28px;
+            height: 28px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .story-tag-gear:hover {
+            background: #1d2741;
+        }
+
+        .story-task-summary {
+            margin-top: 10px;
+            font-size: 12px;
+            color: #475569;
+            font-weight: 600;
+        }
+
+        .story-card-task-list {
+            list-style: none;
+            margin: 6px 0;
+            padding-left: 14px;
+            font-size: 11px;
+            color: #4b5563;
+            flex: 1;
+        }
+
+        .story-card-task-list li {
+            margin-bottom: 4px;
+        }
+
+        .story-card-task-list li:last-child {
+            margin-bottom: 0;
+        }
+
+        .confidence-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        .confidence-high { background: #d4edda; color: #155724; }
+        .confidence-medium { background: #fff3cd; color: #856404; }
+        .confidence-low { background: #f8d7da; color: #721c24; }
+
+        .story-tasks {
+            margin-top: 10px;
+            border-top: 1px solid #edf2f7;
+            padding-top: 10px;
+        }
+
+        .story-tasks-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            color: #475569;
+            margin-bottom: 6px;
+        }
+
+        .story-task-count {
+            font-weight: 600;
+            color: #1f2937;
+        }
+
+        .story-task-list {
+            list-style: none;
+            padding-left: 0;
+            margin: 0 0 6px 0;
+        }
+
+        .story-task-list li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 4px 0;
+            font-size: 12px;
+            border-bottom: 1px dashed #e2e8f0;
+        }
+
+        .story-task-list li:last-child {
+            border-bottom: none;
+        }
+
+        .story-task-title {
+            flex: 1;
+            margin-right: 10px;
+            color: #1f2937;
+        }
+
+        .story-task-title.task-badge-removed {
+            text-decoration: line-through;
+            color: #94a3b8;
+        }
+
+        .story-task-actions button {
+            border: none;
+            background: transparent;
+            color: #64748b;
+            cursor: pointer;
+            font-size: 11px;
+            padding: 2px 6px;
+        }
+
+        .story-task-actions button:hover {
+            color: #dc2626;
+        }
+
+        .task-add-btn {
+            width: 100%;
+            border: 1px dashed #cbd5f5;
+            background: #f8fafc;
+            padding: 6px;
+            border-radius: 6px;
+            font-size: 12px;
+            color: #475569;
+            cursor: pointer;
+        }
+
+        .task-add-btn:hover {
+            background: #eef2ff;
+            border-color: #a5b4fc;
+        }
+
+        /* Mapping board layout */
+        .board-toolbar {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .board-toolbar button {
+            border: none;
+            border-radius: 6px;
+            padding: 10px 18px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .board-toolbar .primary {
+            background: #ffffff;
+            color: #667eea;
+        }
+
+        .board-toolbar .success {
+            background: #28a745;
+            color: white;
+        }
+
+        .board-toolbar .danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .board-toolbar .neutral {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .board-toolbar .warning {
+            background: #ffb703;
+            color: #1b1f3b;
+        }
+
+        .zoom-display {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: white;
+            font-weight: 600;
+        }
+
+        #story-mapping-wrapper {
+            margin-top: 20px;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 15px;
+            background: #f8f9fa;
+            overflow: auto;
+            min-height: 420px;
+            max-height: 75vh;
+        }
+
+        #story-mapping-board {
+            display: flex;
+            gap: 20px;
+            min-height: 420px;
+            transform-origin: 0 0;
+            width: max(100%, fit-content);
+            min-width: 100%;
+            padding-bottom: 20px;
+        }
+
+        .epic-lane {
+            min-width: 320px;
+            flex: 0 0 360px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .epic-header {
+            border-radius: 8px 8px 0 0;
+            padding: 15px;
+            position: relative;
+        }
+
+        .epic-actions {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .epic-delete-btn {
+            background: rgba(0, 0, 0, 0.3);
+            border: none;
+            color: white;
+            border-radius: 4px;
+            padding: 4px 8px;
+            cursor: pointer;
+        }
+
+        .epic-delete-btn:hover {
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        .swimlanes {
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .swimlane {
+            border: 1px solid #dfe3ea;
+            border-radius: 8px;
+            background: #fdfdfd;
+            overflow: hidden;
+        }
+
+        .swimlane-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 14px;
+            font-size: 13px;
+            font-weight: 700;
+            color: #495057;
+            background: #f7f9fc;
+        }
+
+        .story-dropzone {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 14px;
+            padding: 12px 14px;
+            min-height: 210px;
+            align-items: start;
+            scrollbar-width: thin;
+        }
+
+        .story-dropzone::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .story-dropzone::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .story-dropzone::-webkit-scrollbar-thumb {
+            background: rgba(15, 23, 42, 0.2);
+            border-radius: 999px;
+        }
+
+        .story-dropzone > .story-card {
+            scroll-snap-align: start;
+        }
+
+        .zoom-hint {
+            margin-top: 10px;
+            font-size: 12px;
+            color: #6c757d;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.75);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        .modal {
+            background: white;
+            border-radius: 10px;
+            max-width: 1400px;
+            width: 95%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+            animation: fadeIn 0.2s ease-out;
+        }
+
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-body {
+            padding: 20px;
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+
+        .modal-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .modal-tab {
+            border: 1px solid #cbd5f5;
+            border-radius: 20px;
+            padding: 6px 14px;
+            background: #f8fafc;
+            color: #475569;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+        }
+
+        .modal-tab.active {
+            background: #667eea;
+            color: #fff;
+            border-color: #667eea;
+        }
+
+        .modal-tab-panel {
+            display: none;
+        }
+
+        .modal-tab-panel.active {
+            display: block;
+        }
+
+        .modal-actions {
+            padding: 16px 20px;
+            border-top: 1px solid #e9ecef;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .modal-actions button {
+            border: none;
+            border-radius: 6px;
+            padding: 10px 18px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .story-modal-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1f2937;
+        }
+
+        .story-modal-meta {
+            font-size: 13px;
+            color: #64748b;
+            margin-top: 6px;
+        }
+
+        .story-modal-body .description {
+            white-space: pre-line;
+            background: #f8fafc;
+            padding: 16px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            font-size: 14px;
+            line-height: 1.6;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .story-modal-body .description img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 4px;
+            margin: 10px 0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .story-modal-body .description ul,
+        .story-modal-body .description ol {
+            margin: 10px 0;
+            padding-left: 24px;
+        }
+
+        .story-modal-body .description li {
+            margin: 6px 0;
+        }
+
+        .story-modal-body .description h1,
+        .story-modal-body .description h2,
+        .story-modal-body .description h3,
+        .story-modal-body .description h4 {
+            margin-top: 16px;
+            margin-bottom: 8px;
+            color: #1e293b;
+        }
+
+        .story-modal-body .description p {
+            margin: 8px 0;
+        }
+
+        .story-modal-body .description a {
+            color: #667eea;
+            text-decoration: underline;
+        }
+
+        .modal-section {
+            margin-bottom: 20px;
+        }
+
+        .tag-chip-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .tag-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            color: white;
+        }
+
+        .tag-chip button {
+            background: rgba(255,255,255,0.3);
+            border: none;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            color: #fff;
+            cursor: pointer;
+            font-size: 11px;
+        }
+
+        .story-tag-controls,
+        .task-tag-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .story-tag-controls select,
+        .task-tag-select {
+            padding: 6px 10px;
+            border-radius: 6px;
+            border: 1px solid #cbd5f5;
+        }
+
+        .story-tag-controls button,
+        .task-tag-controls button {
+            border: none;
+            border-radius: 6px;
+            padding: 6px 12px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .tag-config-button {
+            background: #0f172a;
+            color: white;
+        }
+
+        .story-tag-add-btn,
+        .task-tag-add-btn {
+            background: #22c55e;
+            color: white;
+        }
+
+        .modal-task-row {
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 12px;
+            background: #fff;
+        }
+
+        .modal-task-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            gap: 12px;
+        }
+
+        .modal-task-header-meta {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        .modal-task-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+
+        .modal-task-row-removed {
+            opacity: 0.65;
+            border-style: dashed;
+        }
+
+        .task-source-badge {
+            font-size: 11px;
+            background: #eef2ff;
+            color: #312e81;
+            border-radius: 999px;
+            padding: 3px 10px;
+            font-weight: 600;
+        }
+
+        .task-source-badge.task-source-draft {
+            background: #ecfccb;
+            color: #365314;
+        }
+
+        .task-status-pill {
+            font-size: 11px;
+            border-radius: 999px;
+            padding: 3px 10px;
+            font-weight: 600;
+        }
+
+        .task-status-active {
+            background: #e0f2fe;
+            color: #0c4a6e;
+        }
+
+        .task-status-removed {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .modal-task-body {
+            font-size: 13px;
+            color: #1f2937;
+            margin-bottom: 10px;
+        }
+
+        .modal-task-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin: 8px 0;
+        }
+
+        .modal-task-empty {
+            text-align: center;
+            padding: 20px;
+            color: #94a3b8;
+            font-size: 14px;
+            border: 1px dashed #cbd5f5;
+            border-radius: 8px;
+            background: #f8fafc;
+        }
+
+        .fullscreen-btn {
+            background: rgba(0, 0, 0, 0.2);
+            color: white;
+        }
+
+        .modal-task-actions button {
+            border: none;
+            border-radius: 6px;
+            padding: 6px 12px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .task-remove-btn {
+            background: #fee2e2;
+            color: #b91c1c;
+        }
+
+        .task-toggle-btn {
+            background: #e2e8f0;
+            color: #475569;
+        }
+
+        .tag-config-list {
+            list-style: none;
+            padding-left: 0;
+            margin: 0 0 15px 0;
+        }
+
+        .tag-config-list li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 0;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .tag-config-list li span {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .tag-config-list button {
+            border: none;
+            background: transparent;
+            color: #dc2626;
+            cursor: pointer;
+        }
+
+        .story-modal-body ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .story-modal-body li {
+            padding: 8px 10px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            font-size: 14px;
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .story-modal-body li span:first-child {
+            font-weight: 600;
+            color: #1f2937;
+        }
+
+        .modal-close-btn {
+            background: transparent;
+            border: none;
+            font-size: 18px;
+            cursor: pointer;
+            color: #64748b;
+        }
+
+        .auth-modal-body p {
+            font-size: 14px;
+            color: #475569;
+            margin-bottom: 12px;
+        }
+
+        .auth-modal-body input {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid #cbd5f5;
+            border-radius: 6px;
+            font-size: 14px;
+            margin-bottom: 12px;
+        }
+
+        .auth-modal-error {
+            color: #dc3545;
+            font-size: 13px;
+            margin-bottom: 10px;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
         .no-data {
             text-align: center;
             padding: 60px 20px;
@@ -306,7 +1135,7 @@
     </style>
 </head>
 <body>
-    <div class="container">
+    <div class="page-wrapper">
         <div class="header">
             <h1>{{ project.name }}</h1>
             <div class="meta">
@@ -614,26 +1443,190 @@
             </div>
         </div>
 
-        <!-- TAB 3: Draft -->
+        <!-- TAB 3: Draft - User Story Mapping -->
         <div id="tab-draft" class="tab-content">
-            <div style="padding: 40px; text-align: center;">
-                <h2 style="color: #667eea; margin-bottom: 20px;">📝 Draft - Espacio de Trabajo</h2>
-                <p style="color: #6c757d; margin-bottom: 30px;">
-                    Espacio reservado para funcionalidades futuras según evolución del proyecto.
-                </p>
-                <div style="background: #f8f9fa; padding: 30px; border-radius: 8px; margin: 20px 0;">
-                    <p style="color: #495057; margin-bottom: 15px;">
-                        <strong>Este tab se utilizará para:</strong>
-                    </p>
-                    <ul style="list-style: none; padding: 0; margin-top: 15px;">
-                        <li style="padding: 8px 0;">✏️ Edición manual de reorganización</li>
-                        <li style="padding: 8px 0;">💾 Guardar borradores de propuestas</li>
-                        <li style="padding: 8px 0;">🔄 Comparativas antes/después</li>
-                        <li style="padding: 8px 0;">🚀 Aplicar cambios masivos a Taiga</li>
+            <div class="draft-layout" id="draft-layout">
+                <div class="draft-hero">
+                    <div style="display: flex; justify-content: space-between; gap: 15px; flex-wrap: wrap; align-items: center;">
+                        <div>
+                            <h2 style="margin-bottom: 10px;">📝 User Story Mapping - Drag & Drop</h2>
+                            <p style="opacity: 0.9;">Organiza épicas en hilera y distribuye las user stories por versión</p>
+                        </div>
+                        <div class="board-toolbar">
+                            <button id="load-proposals-btn" class="primary">↻ Cargar desde Propuesta IA</button>
+                            <button id="new-epic-btn" class="warning">➕ Nueva épica</button>
+                            <button id="new-version-btn" class="primary">➕ Nueva versión</button>
+                            <button id="delete-version-btn" class="danger">🗑️ Borrar versión</button>
+                            <button id="save-draft-btn" class="success">💾 Guardar Draft</button>
+                            <button id="fullscreen-toggle-btn" class="neutral fullscreen-btn">⛶ Pantalla completa</button>
+                            <button id="open-tag-config-toolbar" class="neutral">⚙ Tags</button>
+                            <div class="zoom-display">
+                                <span>Zoom: <span id="zoom-level">100%</span></span>
+                                <button id="reset-zoom-btn" class="neutral">Reset</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="zoom-hint">Usa Ctrl + scroll para acercar o alejar el lienzo</div>
+                </div>
+
+                <!-- User Story Mapping Board -->
+                <div id="story-mapping-wrapper">
+                    <div id="story-mapping-board"></div>
+                </div>
+
+                <!-- Instructions -->
+                <div class="draft-instructions">
+                    <h4 style="margin-bottom: 10px;">💡 Instrucciones</h4>
+                    <ul style="margin-left: 20px; line-height: 1.8;">
+                        <li>Carga las sugerencias IA o crea épicas personalizadas con <strong>"Nueva épica"</strong></li>
+                        <li>Usa el ícono ✕ de cada columna para eliminar épicas propuestas</li>
+                        <li>Las swimlanes agrupan por versión/milestone (MVP y Post-MVP por defecto); añade o borra versiones con los controles del toolbar</li>
+                        <li>Arrastra las tarjetas entre épicas y versiones; los cambios se guardan automáticamente en el navegador</li>
+                        <li>Haz Ctrl + scroll o usa "Reset" para controlar el zoom</li>
+                        <li>"Guardar Draft" descarga un JSON con el mapeo final para compartirlo</li>
                     </ul>
-                    <p style="margin-top: 20px; color: #6c757d; font-size: 14px;">
-                        Funcionalidad pendiente - depende de resultados del tab Propuesta IA
-                    </p>
+                </div>
+
+                <!-- Story Detail Modal -->
+                <div id="story-modal" class="modal-overlay" style="display: none;">
+                    <div class="modal">
+                        <div class="modal-header">
+                            <div>
+                                <div class="story-modal-title" id="story-modal-title"></div>
+                                <div class="story-modal-meta" id="story-modal-meta"></div>
+                            </div>
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <button class="btn-secondary story-taiga-btn" style="padding: 6px 12px; font-size: 14px; background: #10b981; color: white;" title="Ver en Taiga">🚀 Taiga</button>
+                                <button class="modal-close-btn" onclick="closeStoryModal()">✕</button>
+                            </div>
+                        </div>
+                        <div class="modal-body story-modal-body">
+                            <div class="modal-section" id="story-edit-section">
+                                <!-- Botones de acción arriba -->
+                                <div style="margin-bottom: 15px; display: flex; gap: 10px; justify-content: flex-start; align-items: center; padding: 10px; background: #f8f9fa; border-radius: 6px;">
+                                    <button class="btn-secondary" onclick="saveStoryToDraft()" style="background: #fbbf24; color: #000; font-weight: 600; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">💾 Guardar en Draft</button>
+                                    <button class="btn-primary" onclick="saveStoryToTaiga()" style="background: #10b981; color: white; font-weight: 600; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">🚀 Enviar a Taiga</button>
+                                </div>
+                                <!-- Tabs del editor -->
+                                <div class="modal-tabs" style="display: flex; gap: 5px; margin-bottom: 15px; border-bottom: 2px solid #dee2e6;">
+                                    <button type="button" class="modal-tab" data-edit-tab="source" style="padding: 10px 20px; border: none; background: #f3f4f6; cursor: pointer; border-bottom: 3px solid transparent; border-radius: 6px 6px 0 0; font-size: 14px; font-weight: 500; color: #6b7280; transition: all 0.2s;">Source</button>
+                                    <button type="button" class="modal-tab active" data-edit-tab="preview" style="padding: 10px 20px; border: none; background: white; cursor: pointer; border-bottom: 3px solid #3b82f6; border-radius: 6px 6px 0 0; font-size: 14px; font-weight: 600; color: #1f2937; transition: all 0.2s;">Vista Previa</button>
+                                    <button type="button" class="modal-tab" data-edit-tab="html" style="padding: 10px 20px; border: none; background: #f3f4f6; cursor: pointer; border-bottom: 3px solid transparent; border-radius: 6px 6px 0 0; font-size: 14px; font-weight: 500; color: #6b7280; transition: all 0.2s;">HTML</button>
+                                </div>
+                                <!-- Paneles del editor -->
+                                <div class="modal-tab-panel" data-edit-panel="source" style="display: none;">
+                                    <textarea id="story-description-editor" style="width: 100%; min-height: 400px; font-family: monospace; padding: 10px; border: 1px solid #ddd; border-radius: 4px; resize: vertical;"></textarea>
+                                </div>
+                                <div class="description modal-tab-panel active" data-edit-panel="preview" id="story-description-preview" style="display: block; min-height: 400px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; background: #fafafa;"></div>
+                                <div class="description modal-tab-panel" data-edit-panel="html" id="story-description-html-view" style="display: none; min-height: 400px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; background: #fafafa;"></div>
+                            </div>
+                            <div class="modal-section">
+                                <h4 style="margin-bottom: 8px; color: #1f2937;">Tags de la user story</h4>
+                                <div id="modal-story-tags" class="tag-chip-container"></div>
+                                <div class="story-tag-controls">
+                                    <select id="story-tag-select"></select>
+                                    <button type="button" class="story-tag-add-btn" id="story-tag-add-btn">Agregar tag</button>
+                                    <button type="button" class="tag-config-button" id="open-tag-config-btn">⚙</button>
+                                </div>
+                            </div>
+                            <div class="modal-section">
+                                <h4 style="margin-bottom: 8px; color: #1f2937;">Tareas</h4>
+                                <button type="button" id="modal-add-task-btn" class="story-tag-add-btn">+ Nueva tarea</button>
+                                <div id="modal-task-list"></div>
+                            </div>
+                        </div>
+                        <div class="modal-actions">
+                            <button onclick="closeStoryModal()" style="background: #667eea; color: white;">Cerrar</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Auth Token Modal -->
+                <div id="auth-modal" class="modal-overlay" style="display: none;">
+                    <div class="modal">
+                        <div class="modal-header">
+                            <div>
+                                <div class="story-modal-title">Configurar token de Taiga</div>
+                                <div class="story-modal-meta">Necesitamos tu auth-token para consultar la API.</div>
+                            </div>
+                            <button class="modal-close-btn" onclick="closeAuthModal()">✕</button>
+                        </div>
+                        <form id="auth-form">
+                            <div class="modal-body auth-modal-body">
+                                <p>1. Inicia sesión en Taiga. 2. Abre las DevTools del navegador y busca la cookie <strong>auth-token</strong>. 3. Pégala aquí.</p>
+                                <input type="text" id="auth-token-input" placeholder="auth-token" required>
+                                <div class="auth-modal-error" id="auth-modal-error" style="display: none;"></div>
+                            </div>
+                            <div class="modal-actions">
+                                <button type="button" onclick="closeAuthModal()" style="background: #e2e8f0; color: #475569;">Cancelar</button>
+                                <button type="submit" style="background: #28a745; color: white;">Guardar token</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Tag Config Modal -->
+                <div id="tag-config-modal" class="modal-overlay" style="display: none;">
+                    <div class="modal">
+                        <div class="modal-header">
+                            <div>
+                                <div class="story-modal-title">Configurar Tags disponibles</div>
+                                <div class="story-modal-meta">Estos tags podrán asignarse a historias y tareas.</div>
+                            </div>
+                            <button class="modal-close-btn" onclick="closeTagConfigModal()">✕</button>
+                        </div>
+                        <div class="modal-body">
+                            <ul class="tag-config-list" id="tag-config-list"></ul>
+                            <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                                <input type="text" id="tag-config-name" placeholder="Nombre del tag" style="flex: 1; padding: 8px; border: 1px solid #cbd5f5; border-radius: 6px;">
+                                <input type="color" id="tag-config-color" value="#6c757d" style="width: 60px; height: 40px; border: none;">
+                                <button type="button" class="story-tag-add-btn" id="tag-config-add-btn">Agregar tag</button>
+                            </div>
+                        </div>
+                        <div class="modal-actions">
+                            <button onclick="closeTagConfigModal()" style="background: #667eea; color: white;">Cerrar</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Task Detail Modal -->
+                <div id="task-modal" class="modal-overlay" style="display: none; z-index: 10000;">
+                    <div class="modal" style="max-width: 900px;">
+                        <div class="modal-header">
+                            <div>
+                                <div class="story-modal-title" id="task-modal-title">Detalle de Tarea</div>
+                                <div class="story-modal-meta" id="task-modal-meta"></div>
+                            </div>
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <button class="btn-secondary task-taiga-btn" style="padding: 6px 12px; font-size: 14px; background: #10b981; color: white;" title="Ver en Taiga">🚀 Taiga</button>
+                                <button class="modal-close-btn" onclick="closeTaskModal()">✕</button>
+                            </div>
+                        </div>
+                        <div class="modal-body story-modal-body">
+                            <div class="modal-section" id="task-edit-section">
+                                <!-- Botones de acción arriba -->
+                                <div style="margin-bottom: 15px; display: flex; gap: 10px; justify-content: flex-start; align-items: center; padding: 10px; background: #f8f9fa; border-radius: 6px;">
+                                    <button class="btn-secondary" onclick="saveTaskToDraft()" style="background: #fbbf24; color: #000; font-weight: 600; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">💾 Guardar en Draft</button>
+                                    <button class="btn-primary" onclick="saveTaskToTaiga()" style="background: #10b981; color: white; font-weight: 600; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">🚀 Enviar a Taiga</button>
+                                </div>
+                                <!-- Tabs del editor -->
+                                <div class="modal-tabs" style="display: flex; gap: 5px; margin-bottom: 15px; border-bottom: 2px solid #dee2e6;">
+                                    <button type="button" class="modal-tab" data-task-edit-tab="source" style="padding: 10px 20px; border: none; background: #f3f4f6; cursor: pointer; border-bottom: 3px solid transparent; border-radius: 6px 6px 0 0; font-size: 14px; font-weight: 500; color: #6b7280; transition: all 0.2s;">Source</button>
+                                    <button type="button" class="modal-tab active" data-task-edit-tab="preview" style="padding: 10px 20px; border: none; background: white; cursor: pointer; border-bottom: 3px solid #3b82f6; border-radius: 6px 6px 0 0; font-size: 14px; font-weight: 600; color: #1f2937; transition: all 0.2s;">Vista Previa</button>
+                                    <button type="button" class="modal-tab" data-task-edit-tab="html" style="padding: 10px 20px; border: none; background: #f3f4f6; cursor: pointer; border-bottom: 3px solid transparent; border-radius: 6px 6px 0 0; font-size: 14px; font-weight: 500; color: #6b7280; transition: all 0.2s;">HTML</button>
+                                </div>
+                                <!-- Paneles del editor -->
+                                <div class="modal-tab-panel" data-task-edit-panel="source" style="display: none;">
+                                    <textarea id="task-description-editor" style="width: 100%; min-height: 400px; font-family: monospace; padding: 10px; border: 1px solid #ddd; border-radius: 4px; resize: vertical;"></textarea>
+                                </div>
+                                <div class="description modal-tab-panel active" data-task-edit-panel="preview" id="task-description-preview" style="display: block; min-height: 400px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; background: #fafafa;"></div>
+                                <div class="description modal-tab-panel" data-task-edit-panel="html" id="task-description-html-view" style="display: none; min-height: 400px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; background: #fafafa;"></div>
+                            </div>
+                        </div>
+                        <div class="modal-actions">
+                            <button onclick="closeTaskModal()" style="background: #667eea; color: white;">Cerrar</button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -675,6 +1668,2862 @@
                 row.style.display = text.includes(searchTerm) ? '' : 'none';
             });
         });
+
+        // ======================================================================
+        // DRAFT TAB - User Story Mapping Drag & Drop
+        // ======================================================================
+
+        (function() {
+            const aiProposals = {{ ai_analysis.proposals | tojson }};
+            const modulesData = {{ draft_modules | tojson }};
+            const storyDetails = {{ story_details | tojson }};
+            // Make storyDetails globally accessible for editing functions
+            window.storyDetails = storyDetails;
+            const serverDraftState = {{ draft_state | tojson }};
+            const projectTags = {{ project_tags | tojson }};
+            const showTokenModal = {{ 'true' if show_token_modal else 'false' }};
+            const boardStateKey = 'taiga_story_mapping';
+            const projectTaigaId = {{ project.taiga_id }};
+            const boardWrapper = document.getElementById('story-mapping-wrapper');
+            const boardElement = document.getElementById('story-mapping-board');
+            const draftLayout = document.getElementById('draft-layout');
+            if (!boardWrapper || !boardElement) {
+                return;
+            }
+
+            const DEFAULT_VERSIONS = ['MVP', 'Post-MVP'];
+            let versionLabelSet = new Set(DEFAULT_VERSIONS);
+            const dynamicModules = JSON.parse(JSON.stringify(modulesData));
+            let currentZoom = 1;
+            let laneSortableInstance = null;
+            let savedLaneOrder = null;
+            let currentModalStoryId = null;
+            const storyTasksState = {};
+            const storyTagsState = {};
+            const tagInventory = new Map((projectTags || []).map(tag => [tag.name, tag.color || '#6c757d']));
+
+            const loadBtn = document.getElementById('load-proposals-btn');
+            const saveBtn = document.getElementById('save-draft-btn');
+            const newEpicBtn = document.getElementById('new-epic-btn');
+            const newVersionBtn = document.getElementById('new-version-btn');
+            const deleteVersionBtn = document.getElementById('delete-version-btn');
+            const zoomResetBtn = document.getElementById('reset-zoom-btn');
+            const zoomLevelEl = document.getElementById('zoom-level');
+            const fullscreenToggleBtn = document.getElementById('fullscreen-toggle-btn');
+            const storyModal = document.getElementById('story-modal');
+            const storyModalTitle = document.getElementById('story-modal-title');
+            const storyModalMeta = document.getElementById('story-modal-meta');
+            const storyModalDescriptionText = document.getElementById('story-modal-description-text');
+            const storyModalDescriptionHtml = document.getElementById('story-modal-description-html');
+            const storyModalTags = document.getElementById('modal-story-tags');
+            const storyTagSelect = document.getElementById('story-tag-select');
+            const storyTagAddBtn = document.getElementById('story-tag-add-btn');
+            const openTagConfigBtn = document.getElementById('open-tag-config-btn');
+            const openTagConfigToolbarBtn = document.getElementById('open-tag-config-toolbar');
+            const tagConfigModal = document.getElementById('tag-config-modal');
+            const tagConfigList = document.getElementById('tag-config-list');
+            const tagConfigNameInput = document.getElementById('tag-config-name');
+            const tagConfigColorInput = document.getElementById('tag-config-color');
+            const tagConfigAddBtn = document.getElementById('tag-config-add-btn');
+            const modalTaskList = document.getElementById('modal-task-list');
+            const modalAddTaskBtn = document.getElementById('modal-add-task-btn');
+            const authModal = document.getElementById('auth-modal');
+            const authForm = document.getElementById('auth-form');
+            const authInput = document.getElementById('auth-token-input');
+            const authError = document.getElementById('auth-modal-error');
+            const descriptionTabButtons = document.querySelectorAll('[data-description-tab]');
+            const descriptionTabPanels = document.querySelectorAll('[data-description-panel]');
+
+            loadBtn?.addEventListener('click', loadFromProposal);
+            saveBtn?.addEventListener('click', saveDraft);
+            newEpicBtn?.addEventListener('click', promptNewEpic);
+            newVersionBtn?.addEventListener('click', promptNewVersion);
+            deleteVersionBtn?.addEventListener('click', promptDeleteVersion);
+            zoomResetBtn?.addEventListener('click', () => setZoom(1));
+            boardWrapper.addEventListener('wheel', handleZoomWheel, { passive: false });
+            boardElement.addEventListener('click', handleEpicActions);
+            boardElement.addEventListener('click', handleStoryClick);
+            boardElement.addEventListener('click', handleStoryTagGearClick);
+            authForm?.addEventListener('submit', submitAuthToken);
+            storyTagAddBtn?.addEventListener('click', () => {
+                if (!currentModalStoryId || !storyTagSelect?.value) return;
+                addTagToStory(currentModalStoryId, storyTagSelect.value);
+                storyTagSelect.value = '';
+            });
+            openTagConfigBtn?.addEventListener('click', openTagConfigModal);
+            openTagConfigToolbarBtn?.addEventListener('click', openTagConfigModal);
+            tagConfigAddBtn?.addEventListener('click', () => {
+                const name = (tagConfigNameInput?.value || '').trim();
+                const color = tagConfigColorInput?.value || '#6c757d';
+                if (!name) return;
+                addTagToInventory(name, color);
+                tagConfigNameInput.value = '';
+            });
+            modalAddTaskBtn?.addEventListener('click', () => {
+                if (!currentModalStoryId) return;
+                promptAddTask(currentModalStoryId);
+            });
+            storyModalTags?.addEventListener('click', handleStoryTagClick);
+            modalTaskList?.addEventListener('click', handleModalTaskListClick);
+            tagConfigList?.addEventListener('click', handleTagConfigClick);
+            fullscreenToggleBtn?.addEventListener('click', toggleBoardFullscreen);
+            document.addEventListener('fullscreenchange', updateFullscreenButtonState);
+            document.addEventListener('keydown', handleFullscreenKeydown, false);
+            descriptionTabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    setActiveDescriptionTab(button.dataset.descriptionTab || 'text');
+                });
+            });
+
+            // Event listeners for Taiga buttons
+            const storyTaigaBtn = document.querySelector('.story-taiga-btn');
+            const taskTaigaBtn = document.querySelector('.task-taiga-btn');
+
+            storyTaigaBtn?.addEventListener('click', () => {
+                if (!currentModalStoryId) {
+                    alert('No se pudo determinar el ID de la historia');
+                    return;
+                }
+                openStoryInTaiga(currentModalStoryId);
+            });
+
+            taskTaigaBtn?.addEventListener('click', () => {
+                if (!currentTaskId) {
+                    alert('No se pudo determinar el ID de la tarea');
+                    return;
+                }
+                openTaskInTaiga(currentTaskId);
+            });
+            window.addEventListener('resize', syncSwimlaneHeights);
+
+            initStoryTasksState();
+            initStoryTagsState();
+            renderTagConfigList();
+            initializeBoard();
+            if (serverDraftState) {
+                restoreFromMapping(serverDraftState);
+            } else {
+                loadDraftFromLocalStorage();
+            }
+            updateFullscreenButtonState();
+            if (showTokenModal) {
+                openAuthModal();
+            }
+
+            function getVersionLabelFromProposal(proposal) {
+                const numericVersion = proposal.version ? Number(proposal.version) : null;
+                if (numericVersion !== null) {
+                    return numericVersion <= 1 ? DEFAULT_VERSIONS[0] : DEFAULT_VERSIONS[1];
+                }
+                const milestone = (proposal.milestone_name || '').toLowerCase();
+                if (
+                    milestone.includes('post') ||
+                    milestone.includes('later') ||
+                    milestone.includes('desp') ||
+                    milestone.includes('v2')
+                ) {
+                    return DEFAULT_VERSIONS[1];
+                }
+                return DEFAULT_VERSIONS[0];
+            }
+
+            function initializeBoard(laneOrder = null) {
+                boardElement.innerHTML = '';
+                const moduleKeys = Object.keys(dynamicModules);
+                const orderedKeys = laneOrder
+                    ? [
+                        ...laneOrder.filter(key => moduleKeys.includes(key)),
+                        ...moduleKeys.filter(key => !laneOrder.includes(key)),
+                    ]
+                    : moduleKeys;
+                orderedKeys.forEach(epicKey => {
+                    boardElement.appendChild(createEpicLane(epicKey, dynamicModules[epicKey]));
+                });
+                enableLaneSorting();
+                updateStoryCounts();
+                setZoom(currentZoom || 1);
+            }
+
+            function enableLaneSorting() {
+                if (laneSortableInstance) {
+                    laneSortableInstance.destroy();
+                }
+                laneSortableInstance = new Sortable(boardElement, {
+                    animation: 200,
+                    handle: '.epic-header',
+                    onEnd: function() {
+                        savedLaneOrder = getLaneOrderFromDom();
+                        saveDraftToLocalStorage();
+                    }
+                });
+            }
+
+            function createEpicLane(epicKey, moduleData) {
+                const lane = document.createElement('div');
+                lane.className = 'epic-lane';
+                lane.dataset.epic = epicKey;
+
+                const header = document.createElement('div');
+                header.className = 'epic-header';
+                header.style.background = moduleData.color || '#6c757d';
+                header.style.color = '#fff';
+                header.innerHTML = `
+                    <div style="font-size: 16px; margin-bottom: 5px;">${moduleData.name}</div>
+                    <div style="font-size: 12px; opacity: 0.9;">${moduleData.description || ''}</div>
+                    <div style="font-size: 14px; margin-top: 8px; opacity: 0.9;">
+                        <span class="story-count">0</span> user stories
+                    </div>
+                    <div class="epic-actions">
+                        <button class="epic-delete-btn" data-epic="${epicKey}" title="Eliminar épica">✕</button>
+                    </div>
+                `;
+
+                const swimlanes = document.createElement('div');
+                swimlanes.className = 'swimlanes';
+                Array.from(versionLabelSet).forEach(versionLabel => {
+                    swimlanes.appendChild(createSwimlane(epicKey, versionLabel));
+                });
+
+                lane.appendChild(header);
+                lane.appendChild(swimlanes);
+                return lane;
+            }
+
+            function createSwimlane(epicKey, versionLabel) {
+                const swimlane = document.createElement('div');
+                swimlane.className = 'swimlane';
+                swimlane.dataset.epic = epicKey;
+                swimlane.dataset.version = versionLabel;
+
+                const header = document.createElement('div');
+                header.className = 'swimlane-header';
+                header.innerHTML = `
+                    <span>${versionLabel}</span>
+                    <span class="lane-count">0</span>
+                `;
+
+                const dropzone = document.createElement('div');
+                dropzone.className = 'story-dropzone';
+                dropzone.dataset.epic = epicKey;
+                dropzone.dataset.version = versionLabel;
+                attachSortable(dropzone);
+
+                swimlane.appendChild(header);
+                swimlane.appendChild(dropzone);
+                return swimlane;
+            }
+
+            function attachSortable(container) {
+                new Sortable(container, {
+                    group: 'stories',
+                    animation: 150,
+                    ghostClass: 'sortable-ghost',
+                    dragClass: 'sortable-drag',
+                    direction: 'horizontal',
+                    swapThreshold: 0.6,
+                    scroll: true,
+                    onEnd: function(evt) {
+                        const target = evt.item;
+                        target.dataset.version = evt.to.dataset.version || target.dataset.version;
+                        updateStoryCounts();
+                        saveDraftToLocalStorage();
+                    }
+                });
+            }
+
+            function ensureEpicExists(epicKey) {
+                if (boardElement.querySelector(`.epic-lane[data-epic="${epicKey}"]`)) {
+                    return;
+                }
+                if (!dynamicModules[epicKey]) {
+                    const fallback = modulesData[epicKey] || {
+                        name: epicKey,
+                        description: 'Epic importada',
+                        color: '#6c757d'
+                    };
+                    dynamicModules[epicKey] = fallback;
+                }
+                boardElement.appendChild(createEpicLane(epicKey, dynamicModules[epicKey]));
+                enableLaneSorting();
+                updateStoryCounts();
+            }
+
+            function ensureSwimlane(epicKey, versionLabel) {
+                if (!versionLabelSet.has(versionLabel)) {
+                    addVersionLabel(versionLabel);
+                }
+                const selector = `.story-dropzone[data-epic="${epicKey}"][data-version="${versionLabel}"]`;
+                let target = boardElement.querySelector(selector);
+                if (!target) {
+                    const lane = boardElement.querySelector(`.epic-lane[data-epic="${epicKey}"]`);
+                    if (lane) {
+                        const swimlanes = lane.querySelector('.swimlanes');
+                        swimlanes.appendChild(createSwimlane(epicKey, versionLabel));
+                        target = boardElement.querySelector(selector);
+                    }
+                }
+                return target;
+            }
+
+            function handleEpicActions(event) {
+                const deleteBtn = event.target.closest('.epic-delete-btn');
+                if (deleteBtn) {
+                    deleteEpic(deleteBtn.dataset.epic);
+                }
+            }
+
+            function handleStoryClick(event) {
+                if (event.target.closest('.story-tag-gear')) {
+                    return;
+                }
+                const card = event.target.closest('.story-card');
+                if (!card) return;
+                openStoryModal(card.dataset.usId);
+            }
+
+            function promptNewEpic() {
+                const name = prompt('Nombre de la nueva épica:');
+                if (!name) return;
+
+                const description = prompt('Descripción (opcional):') || 'Epic personalizada';
+                let color = prompt('Color hex (#RRGGBB):', '#6f42c1') || '#6f42c1';
+                color = normalizeColor(color);
+
+                const epicKey = `custom-${Date.now()}`;
+                dynamicModules[epicKey] = { name, description, color };
+                boardElement.appendChild(createEpicLane(epicKey, dynamicModules[epicKey]));
+                enableLaneSorting();
+                updateStoryCounts();
+                saveDraftToLocalStorage();
+            }
+
+            function normalizeColor(value) {
+                let color = value.trim();
+                if (!color.startsWith('#')) {
+                    color = `#${color}`;
+                }
+                if (color.length === 4) {
+                    color = `#${color[1]}${color[1]}${color[2]}${color[2]}${color[3]}${color[3]}`;
+                }
+                if (!/^#[0-9a-fA-F]{6}$/.test(color)) {
+                    color = '#6c757d';
+                }
+                return color;
+            }
+
+            function promptNewVersion() {
+                const label = prompt('Nombre de la versión / milestone:');
+                if (!label) return;
+                addVersionLabel(label.trim());
+                saveDraftToLocalStorage();
+            }
+
+            function promptAddTask(storyId) {
+                const normalizedStoryId = String(storyId);
+                ensureStoryTaskState(normalizedStoryId);
+                const subject = prompt('Título de la tarea borrador:');
+                if (!subject) return;
+                const state = storyTasksState[normalizedStoryId];
+                state.drafts.push({
+                    id: `draft-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+                    ref: null,
+                    subject: subject.trim(),
+                    tags: [],
+                    originalTags: [],
+                });
+                refreshStoryCard(normalizedStoryId);
+                renderModalTasks(normalizedStoryId);
+                saveDraftToLocalStorage();
+            }
+
+            function toggleTaskRemoval(storyId, taskId) {
+                const normalizedStoryId = String(storyId);
+                ensureStoryTaskState(normalizedStoryId);
+                const state = storyTasksState[normalizedStoryId];
+                const key = String(taskId);
+                if (state.removed.has(key)) {
+                    state.removed.delete(key);
+                } else {
+                    state.removed.add(key);
+                }
+                refreshStoryCard(normalizedStoryId);
+                if (currentModalStoryId === normalizedStoryId) {
+                    renderModalTasks(normalizedStoryId);
+                }
+                saveDraftToLocalStorage();
+            }
+
+            function deleteDraftTask(storyId, taskId) {
+                const normalizedStoryId = String(storyId);
+                ensureStoryTaskState(normalizedStoryId);
+                const state = storyTasksState[normalizedStoryId];
+                state.drafts = state.drafts.filter(task => task.id !== taskId);
+                refreshStoryCard(normalizedStoryId);
+                if (currentModalStoryId === normalizedStoryId) {
+                    renderModalTasks(normalizedStoryId);
+                }
+                saveDraftToLocalStorage();
+            }
+
+            function promptDeleteVersion() {
+                if (versionLabelSet.size <= 1) {
+                    alert('Debe existir al menos una versión.');
+                    return;
+                }
+                const options = Array.from(versionLabelSet).join(', ');
+                const label = prompt(`Versión a eliminar (mueve primero sus user stories):\n${options}`);
+                if (!label) return;
+                const normalized = label.trim();
+                if (!versionLabelSet.has(normalized)) {
+                    alert('Esa versión no existe en el tablero.');
+                    return;
+                }
+                const cards = boardElement.querySelectorAll(`.story-dropzone[data-version="${normalized}"] .story-card`);
+                if (cards.length) {
+                    alert('Mueve las user stories a otra versión antes de eliminarla.');
+                    return;
+                }
+                removeVersionLabel(normalized);
+                saveDraftToLocalStorage();
+            }
+
+            function removeVersionLabel(label) {
+                if (!versionLabelSet.has(label)) {
+                    return;
+                }
+                versionLabelSet.delete(label);
+                boardElement.querySelectorAll(`.swimlane[data-version="${label}"]`).forEach(swimlane => swimlane.remove());
+                syncSwimlaneHeights();
+            }
+
+            function addVersionLabel(label) {
+                if (!label || versionLabelSet.has(label)) {
+                    return;
+                }
+                versionLabelSet.add(label);
+                document.querySelectorAll('.epic-lane').forEach(lane => {
+                    if (!lane.querySelector(`.story-dropzone[data-version="${label}"]`)) {
+                        const swimlanes = lane.querySelector('.swimlanes');
+                        swimlanes.appendChild(createSwimlane(lane.dataset.epic, label));
+                    }
+                });
+                syncSwimlaneHeights();
+            }
+
+            function deleteEpic(epicKey) {
+                const lane = boardElement.querySelector(`.epic-lane[data-epic="${epicKey}"]`);
+                if (!lane) return;
+                const storyCount = lane.querySelectorAll('.story-card').length;
+                const confirmDelete = confirm(`¿Eliminar la épica "${getEpicMeta(epicKey).name}"?` + (storyCount ? ` (${storyCount} user stories se perderán del borrador)` : ''));
+                if (!confirmDelete) return;
+
+                lane.remove();
+                delete dynamicModules[epicKey];
+                savedLaneOrder = getLaneOrderFromDom();
+                syncSwimlaneHeights();
+                saveDraftToLocalStorage();
+            }
+
+            function sanitizeStorySubject(subject) {
+                if (!subject) return '';
+                const trimmed = subject.trim();
+                const cleaned = trimmed.replace(/^(#\d+\s*)+/gi, '').trim();
+                return cleaned || trimmed;
+            }
+
+            function getStoryDescriptionSnippet(storyId) {
+                const detail = storyDetails[String(storyId)];
+                if (!detail) return '';
+
+                const description = detail.description_text || detail.description || '';
+                if (!description) return '';
+
+                // Remove HTML tags
+                const stripped = description.replace(/<[^>]*>/g, '').trim();
+
+                // Buscar patrón "Como... quiero... para..."
+                const comoMatch = stripped.match(/Como\s+[^.]+/i);
+                const quieroMatch = stripped.match(/quiero\s+[^.]+/i);
+                const paraMatch = stripped.match(/para\s+[^.]+/i);
+
+                if (comoMatch || quieroMatch || paraMatch) {
+                    const parts = [];
+                    if (comoMatch) parts.push(comoMatch[0]);
+                    if (quieroMatch) parts.push(quieroMatch[0]);
+                    if (paraMatch) parts.push(paraMatch[0]);
+
+                    const result = parts.join(' ');
+                    const maxLength = 200;
+                    if (result.length <= maxLength) {
+                        return result;
+                    }
+                    return result.substring(0, maxLength) + '...';
+                }
+
+                // Si no tiene el patrón, mostrar primeros 100 caracteres
+                const maxLength = 100;
+                if (stripped.length <= maxLength) {
+                    return stripped;
+                }
+                return stripped.substring(0, maxLength) + '...';
+            }
+
+            function createStoryCard(proposal, forcedVersionLabel) {
+                const card = document.createElement('div');
+                card.className = 'story-card';
+                card.dataset.usRef = proposal.item_ref;
+                card.dataset.usId = proposal.item_id;
+                card.dataset.storyId = proposal.item_id;
+                card.dataset.confidence = proposal.confidence ?? 0;
+                card.dataset.tags = JSON.stringify(proposal.proposed_tags || []);
+                card.dataset.currentEpicName = proposal.current_epic_name || '';
+                card.dataset.reason = proposal.reason || '';
+                card.dataset.versionRaw = proposal.version ?? '';
+                card.dataset.milestoneName = proposal.milestone_name || '';
+                card.dataset.proposedEpic = proposal.proposed_epic;
+
+                const versionLabel = forcedVersionLabel || getVersionLabelFromProposal(proposal);
+                card.dataset.version = versionLabel;
+
+                const confidenceClass =
+                    proposal.confidence > 0.7 ? 'confidence-high' :
+                    proposal.confidence > 0.4 ? 'confidence-medium' : 'confidence-low';
+
+                const confidencePercent = Math.round((proposal.confidence ?? 0) * 100);
+                const targetEpic = getEpicMeta(proposal.proposed_epic);
+                const storyId = String(proposal.item_id);
+                ensureStoryTaskState(storyId);
+                ensureStoryTagsState(storyId);
+                const displaySubject = sanitizeStorySubject(proposal.item_subject);
+                const descriptionContent = getStoryDescriptionSnippet(storyId);
+
+                card.innerHTML = `
+                    <div class="story-card-header">
+                        <div class="story-card-title">
+                            <span class="ref-badge ref-us">#${proposal.item_ref}</span>
+                            ${displaySubject}
+                        </div>
+                        <span class="confidence-badge ${confidenceClass}">${confidencePercent}%</span>
+                    </div>
+                    <div class="story-card-meta">
+                        ${proposal.current_epic_name || '<em>Sin épica</em>'} → ${targetEpic.name}
+                    </div>
+                    <div class="story-card-meta">Versión: <strong>${versionLabel}</strong></div>
+                    ${descriptionContent ? `<div class="story-card-description">${descriptionContent}</div>` : ''}
+                    <div class="story-card-tags" data-story-id="${storyId}"></div>
+                    <ul class="story-card-task-list" data-story-id="${storyId}"></ul>
+                    <div class="story-task-summary">
+                        Tareas <span class="story-task-count">0</span>
+                    </div>
+                `;
+
+                renderStoryTagsOnCard(card, storyId);
+                renderStoryTasks(card, storyId);
+
+                return card;
+            }
+
+            function initStoryTasksState() {
+                Object.entries(storyDetails || {}).forEach(([storyId, detail]) => {
+                    const baseTasks = (detail.tasks || []).map(task => {
+                        const originalTags = Array.isArray(task.tags) ? [...task.tags] : [];
+                        return {
+                            id: task.id != null ? String(task.id) : null,
+                            ref: task.ref || '',
+                            subject: task.subject || '',
+                            description: task.description || '',
+                            description_html: task.description_html || '',
+                            tags: [...originalTags],
+                            originalTags: [...originalTags],
+                        };
+                    });
+                    storyTasksState[storyId] = {
+                        base: baseTasks,
+                        removed: new Set(),
+                        drafts: [],
+                    };
+                });
+            }
+
+            function resetStoryTaskStateFromBase() {
+                Object.values(storyTasksState).forEach(state => {
+                    state.removed = new Set();
+                    state.drafts = [];
+                    state.base = (state.base || []).map(task => ({
+                        ...task,
+                        tags: Array.isArray(task.originalTags) ? [...task.originalTags] : [],
+                    }));
+                });
+            }
+
+            function initStoryTagsState() {
+                resetStoryTagStateFromBase();
+            }
+
+            function resetStoryTagStateFromBase() {
+                Object.entries(storyDetails || {}).forEach(([storyId, detail]) => {
+                    storyTagsState[storyId] = new Set(detail.tags || []);
+                });
+            }
+
+            function ensureStoryTaskState(storyId) {
+                if (!storyTasksState[storyId]) {
+                    storyTasksState[storyId] = {
+                        base: [],
+                        removed: new Set(),
+                        drafts: [],
+                    };
+                } else {
+                    storyTasksState[storyId].base = storyTasksState[storyId].base || [];
+                    storyTasksState[storyId].removed = storyTasksState[storyId].removed || new Set();
+                    storyTasksState[storyId].drafts = storyTasksState[storyId].drafts || [];
+                }
+            }
+
+            function ensureStoryTagsState(storyId) {
+                if (!storyTagsState[storyId]) {
+                    storyTagsState[storyId] = new Set();
+                }
+            }
+
+            function renderStoryTasks(card, storyId) {
+                const state = storyTasksState[storyId];
+                const countEl = card.querySelector('.story-task-count');
+                if (!countEl) return;
+
+                if (!state) {
+                    countEl.textContent = '0';
+                    return;
+                }
+
+                const totalVisible =
+                    state.base.filter(task => !state.removed.has(String(task.id))).length +
+                    state.drafts.length;
+                countEl.textContent = totalVisible;
+            }
+
+            function renderStoryTagsOnCard(card, storyId) {
+                const container = card.querySelector('.story-card-tags');
+                if (!container) {
+                    return;
+                }
+                const tags = getStoryTagsArray(storyId);
+                const wrapper = document.createElement('div');
+                wrapper.className = 'story-card-tags-wrapper';
+                if (!tags.length) {
+                    wrapper.innerHTML = '<span class="tag">sin-tags</span>';
+                } else {
+                    wrapper.innerHTML = tags
+                        .map(tag => {
+                            const color = getTagColor(tag);
+                            return `<span class="tag" style="background:${color}; color:#fff;">${tag}</span>`;
+                        })
+                        .join('');
+                }
+                const gearBtn = document.createElement('button');
+                gearBtn.type = 'button';
+                gearBtn.className = 'story-tag-gear';
+                gearBtn.title = 'Configurar catálogo de tags';
+                gearBtn.innerHTML = '⚙';
+                container.innerHTML = '';
+                container.appendChild(wrapper);
+                container.appendChild(gearBtn);
+            }
+
+            function renderStoryModalTags(storyId) {
+                if (!storyModalTags) return;
+                const tags = getStoryTagsArray(storyId);
+                storyModalTags.innerHTML = '';
+                if (!tags.length) {
+                    storyModalTags.innerHTML = '<span class="tag">sin-tags</span>';
+                } else {
+                    const fragment = document.createDocumentFragment();
+                    tags.forEach(tag => {
+                        const chip = createTagChipElement(tag, getTagColor(tag), 'story-tag-remove-btn', {
+                            storyId,
+                            tagName: tag,
+                        });
+                        fragment.appendChild(chip);
+                    });
+                    storyModalTags.appendChild(fragment);
+                }
+                updateStoryTagSelect(storyId);
+            }
+
+            function updateStoryTagSelect(storyId) {
+                if (!storyTagSelect) return;
+                storyTagSelect.innerHTML = '';
+                const option = document.createElement('option');
+                option.value = '';
+                option.disabled = true;
+                option.selected = true;
+                option.textContent = 'Seleccionar tag';
+                storyTagSelect.appendChild(option);
+
+                const assigned = new Set(getStoryTagsArray(storyId));
+                const inventory = getInventoryList().filter(({ name }) => !assigned.has(name));
+                inventory.forEach(({ name }) => {
+                    const opt = document.createElement('option');
+                    opt.value = name;
+                    opt.textContent = name;
+                    storyTagSelect.appendChild(opt);
+                });
+                const hasOptions = inventory.length > 0;
+                storyTagSelect.disabled = !hasOptions;
+                if (storyTagAddBtn) {
+                    storyTagAddBtn.disabled = !hasOptions;
+                }
+            }
+
+            function addTagToStory(storyId, tagName) {
+                if (!tagName) return;
+                ensureStoryTagsState(storyId);
+                storyTagsState[storyId].add(tagName);
+                refreshStoryCard(storyId);
+                if (currentModalStoryId === String(storyId)) {
+                    renderStoryModalTags(storyId);
+                }
+                saveDraftToLocalStorage();
+            }
+
+            function removeTagFromStory(storyId, tagName) {
+                ensureStoryTagsState(storyId);
+                storyTagsState[storyId].delete(tagName);
+                refreshStoryCard(storyId);
+                if (currentModalStoryId === String(storyId)) {
+                    renderStoryModalTags(storyId);
+                }
+                saveDraftToLocalStorage();
+            }
+
+            function handleStoryTagClick(event) {
+                const removeBtn = event.target.closest('.story-tag-remove-btn');
+                if (!removeBtn) return;
+                const { storyId, tagName } = removeBtn.dataset;
+                if (!storyId || !tagName) return;
+                removeTagFromStory(storyId, tagName);
+            }
+
+            function handleStoryTagGearClick(event) {
+                const gearBtn = event.target.closest('.story-tag-gear');
+                if (!gearBtn) return;
+                event.stopPropagation();
+                openTagConfigModal();
+            }
+
+            function refreshStoryCard(storyId) {
+                const card = boardElement.querySelector(`.story-card[data-us-id="${storyId}"]`);
+                if (card) {
+                    renderStoryTagsOnCard(card, storyId);
+                    renderStoryTasks(card, storyId);
+                }
+            }
+
+            function refreshAllStoryCards() {
+                boardElement.querySelectorAll('.story-card').forEach(card => {
+                    renderStoryTagsOnCard(card, card.dataset.usId);
+                    renderStoryTasks(card, card.dataset.usId);
+                });
+            }
+
+            function getStoryTagsArray(storyId) {
+                ensureStoryTagsState(storyId);
+                return Array.from(storyTagsState[storyId]);
+            }
+
+            function getTagColor(tagName) {
+                return tagInventory.get(tagName) || '#6c757d';
+            }
+
+            function getInventoryList() {
+                return Array.from(tagInventory.entries())
+                    .map(([name, color]) => ({ name, color }))
+                    .sort((a, b) => a.name.localeCompare(b.name));
+            }
+
+            function createTagChipElement(tagName, color, removeButtonClass, dataset = {}) {
+                const chip = document.createElement('div');
+                chip.className = 'tag-chip';
+                chip.style.background = color;
+                chip.style.color = '#fff';
+
+                const label = document.createElement('span');
+                label.textContent = tagName;
+                chip.appendChild(label);
+
+                const removeBtn = document.createElement('button');
+                removeBtn.type = 'button';
+                removeBtn.className = removeButtonClass;
+                Object.entries(dataset).forEach(([key, value]) => {
+                    if (value !== undefined && value !== null) {
+                        removeBtn.dataset[key] = value;
+                    }
+                });
+                removeBtn.textContent = '×';
+                chip.appendChild(removeBtn);
+
+                return chip;
+            }
+
+            function renderTagConfigList() {
+                if (!tagConfigList) return;
+                tagConfigList.innerHTML = '';
+                const inventory = getInventoryList();
+                if (!inventory.length) {
+                    const empty = document.createElement('li');
+                    empty.textContent = 'No hay tags configurados.';
+                    tagConfigList.appendChild(empty);
+                    return;
+                }
+                inventory.forEach(({ name, color }) => {
+                    const li = document.createElement('li');
+                    const info = document.createElement('span');
+                    const colorDot = document.createElement('span');
+                    colorDot.style.display = 'inline-block';
+                    colorDot.style.width = '12px';
+                    colorDot.style.height = '12px';
+                    colorDot.style.borderRadius = '50%';
+                    colorDot.style.background = color;
+                    info.appendChild(colorDot);
+                    const label = document.createElement('span');
+                    label.textContent = name;
+                    info.appendChild(label);
+                    info.style.gap = '8px';
+                    info.style.alignItems = 'center';
+                    li.appendChild(info);
+
+                    const removeBtn = document.createElement('button');
+                    removeBtn.type = 'button';
+                    removeBtn.className = 'tag-config-remove-btn';
+                    removeBtn.dataset.tagName = name;
+                    removeBtn.textContent = 'Eliminar';
+                    li.appendChild(removeBtn);
+                    tagConfigList.appendChild(li);
+                });
+            }
+
+            function openTagConfigModal() {
+                if (!tagConfigModal) return;
+                renderTagConfigList();
+                tagConfigModal.style.display = 'flex';
+            }
+
+            function closeTagConfigModal() {
+                if (tagConfigModal) {
+                    tagConfigModal.style.display = 'none';
+                }
+            }
+
+            function handleTagConfigClick(event) {
+                const removeBtn = event.target.closest('.tag-config-remove-btn');
+                if (removeBtn) {
+                    const { tagName } = removeBtn.dataset;
+                    if (tagName) {
+                        removeTagFromInventory(tagName);
+                    }
+                }
+            }
+
+            function addTagToInventory(name, color) {
+                const normalizedName = name.trim();
+                if (!normalizedName) return;
+                const normalizedColor = normalizeColor(color || '#6c757d');
+                tagInventory.set(normalizedName, normalizedColor);
+                renderTagConfigList();
+                if (currentModalStoryId) {
+                    renderStoryModalTags(currentModalStoryId);
+                    renderModalTasks(currentModalStoryId);
+                }
+                saveDraftToLocalStorage();
+            }
+
+            function removeTagFromInventory(tagName) {
+                if (!tagInventory.has(tagName)) return;
+                tagInventory.delete(tagName);
+                let cardsToRefresh = new Set();
+                Object.entries(storyTagsState).forEach(([storyId, set]) => {
+                    if (set.delete(tagName)) {
+                        cardsToRefresh.add(storyId);
+                    }
+                });
+                Object.entries(storyTasksState).forEach(([storyId, state]) => {
+                    let changed = false;
+                    state.base.forEach(task => {
+                        if (Array.isArray(task.tags) && task.tags.includes(tagName)) {
+                            task.tags = task.tags.filter(tag => tag !== tagName);
+                            changed = true;
+                        }
+                    });
+                    state.drafts.forEach(task => {
+                        if (Array.isArray(task.tags) && task.tags.includes(tagName)) {
+                            task.tags = task.tags.filter(tag => tag !== tagName);
+                            changed = true;
+                        }
+                    });
+                    if (changed) {
+                        cardsToRefresh.add(storyId);
+                    }
+                });
+
+                cardsToRefresh.forEach(storyId => {
+                    refreshStoryCard(storyId);
+                    if (currentModalStoryId === String(storyId)) {
+                        renderStoryModalTags(storyId);
+                        renderModalTasks(storyId);
+                    }
+                });
+                renderTagConfigList();
+                saveDraftToLocalStorage();
+            }
+
+            function hydrateTagInventory(serialized) {
+                tagInventory.clear();
+                const source = Array.isArray(serialized) && serialized.length
+                    ? serialized
+                    : (projectTags || []);
+                source.forEach(tag => {
+                    if (tag && tag.name) {
+                        tagInventory.set(tag.name, tag.color || '#6c757d');
+                    }
+                });
+                renderTagConfigList();
+                refreshAllStoryCards();
+                if (currentModalStoryId) {
+                    renderStoryModalTags(currentModalStoryId);
+                    renderModalTasks(currentModalStoryId);
+                }
+            }
+
+            function getEpicMeta(epicKey) {
+                return dynamicModules[epicKey] || modulesData[epicKey] || {
+                    name: epicKey,
+                    description: '',
+                    color: '#6c757d'
+                };
+            }
+
+            function clearAllStories() {
+                boardElement.querySelectorAll('.story-dropzone').forEach(zone => zone.innerHTML = '');
+                updateStoryCounts();
+            }
+
+            function getLaneOrderFromDom() {
+                return Array.from(boardElement.querySelectorAll('.epic-lane')).map(lane => lane.dataset.epic);
+            }
+
+            function loadFromProposal() {
+                versionLabelSet = new Set(DEFAULT_VERSIONS);
+                savedLaneOrder = null;
+                applyStoryTagOverrides({});
+                applyStoryTaskOverrides({});
+                initializeBoard();
+                clearAllStories();
+                aiProposals.forEach(proposal => {
+                    ensureEpicExists(proposal.proposed_epic);
+                    const versionLabel = getVersionLabelFromProposal(proposal);
+                    addVersionLabel(versionLabel);
+                    const container = ensureSwimlane(proposal.proposed_epic, versionLabel);
+                    if (!container) return;
+                    container.appendChild(createStoryCard(proposal, versionLabel));
+                });
+                updateStoryCounts();
+                saveDraftToLocalStorage();
+                alert('✅ Propuestas cargadas correctamente en el tablero (todas inician en MVP)');
+            }
+
+            function updateStoryCounts() {
+                boardElement.querySelectorAll('.epic-lane').forEach(lane => {
+                    const total = lane.querySelectorAll('.story-card').length;
+                    const counter = lane.querySelector('.story-count');
+                    if (counter) counter.textContent = total;
+
+                    lane.querySelectorAll('.swimlane').forEach(swimlane => {
+                        const laneCount = swimlane.querySelectorAll('.story-card').length;
+                        const laneCounter = swimlane.querySelector('.lane-count');
+                        if (laneCounter) laneCounter.textContent = laneCount;
+                    });
+                });
+                syncSwimlaneHeights();
+            }
+
+            function syncSwimlaneHeights() {
+                if (!boardElement) return;
+                requestAnimationFrame(() => {
+                    const versionMap = new Map();
+                    const zones = boardElement.querySelectorAll('.story-dropzone');
+                    zones.forEach(zone => {
+                        zone.style.height = '';
+                        zone.style.minHeight = '';
+                        const versionLabel = zone.dataset.version || '__default__';
+                        const record = versionMap.get(versionLabel) || { max: 0, items: [] };
+                        const naturalHeight = zone.scrollHeight;
+                        record.max = Math.max(record.max, naturalHeight);
+                        record.items.push(zone);
+                        versionMap.set(versionLabel, record);
+                    });
+                    versionMap.forEach(({ max, items }) => {
+                        const targetHeight = Math.max(max, 210);
+                        items.forEach(zone => {
+                            zone.style.minHeight = `${targetHeight}px`;
+                        });
+                    });
+                });
+            }
+
+            function buildCurrentMapping() {
+                const mapping = {
+                    versions: Array.from(versionLabelSet),
+                    lane_order: getLaneOrderFromDom(),
+                    epics: {}
+                };
+
+                boardElement.querySelectorAll('.epic-lane').forEach(lane => {
+                    const epicKey = lane.dataset.epic;
+                    mapping.epics[epicKey] = {
+                        name: getEpicMeta(epicKey).name,
+                        color: getEpicMeta(epicKey).color,
+                        description: getEpicMeta(epicKey).description,
+                        swimlanes: {},
+                        total: 0
+                    };
+
+                    lane.querySelectorAll('.story-dropzone').forEach(zone => {
+                        const versionLabel = zone.dataset.version;
+                        const stories = Array.from(zone.querySelectorAll('.story-card')).map(card => ({
+                            ref: card.dataset.usRef,
+                            id: card.dataset.usId,
+                            subject: card.querySelector('.story-card-title').textContent.trim(),
+                            confidence: Number(card.dataset.confidence || 0),
+                            proposed_tags: JSON.parse(card.dataset.tags || '[]'),
+                            current_epic_name: card.dataset.currentEpicName || '',
+                            reason: card.dataset.reason || '',
+                            version_label: versionLabel,
+                            version_raw: card.dataset.versionRaw || null,
+                            milestone_name: card.dataset.milestoneName || ''
+                        }));
+
+                        if (stories.length) {
+                            mapping.epics[epicKey].swimlanes[versionLabel] = stories;
+                            mapping.epics[epicKey].total += stories.length;
+                        }
+                    });
+                });
+
+                const taskOverrides = buildStoryTaskOverrides();
+                if (Object.keys(taskOverrides).length) {
+                    mapping.story_tasks = taskOverrides;
+                }
+
+                const storyTagOverrides = buildStoryTagOverrides();
+                if (Object.keys(storyTagOverrides).length) {
+                    mapping.story_tags = storyTagOverrides;
+                }
+
+                mapping.tag_inventory = getInventoryList();
+
+                return mapping;
+            }
+
+            function saveDraftToLocalStorage() {
+                const mapping = buildCurrentMapping();
+                localStorage.setItem(boardStateKey, JSON.stringify(mapping));
+            }
+
+            function buildStoryTaskOverrides() {
+                const overrides = {};
+                Object.entries(storyTasksState).forEach(([storyId, state]) => {
+                    const removed = Array.from(state.removed);
+                    const added = state.drafts.map(task => ({
+                        id: task.id,
+                        ref: task.ref || null,
+                        subject: task.subject || '',
+                        tags: Array.isArray(task.tags) ? [...task.tags] : [],
+                    }));
+                    const tagOverrides = {};
+                    state.base.forEach(task => {
+                        if (task.id == null) {
+                            return;
+                        }
+                        if (hasTaskTagDiff(task)) {
+                            tagOverrides[task.id] = Array.isArray(task.tags) ? [...task.tags] : [];
+                        }
+                    });
+
+                    if (removed.length || added.length || Object.keys(tagOverrides).length) {
+                        overrides[storyId] = {};
+                        if (removed.length) {
+                            overrides[storyId].removed_task_ids = removed;
+                        }
+                        if (added.length) {
+                            overrides[storyId].added_tasks = added;
+                        }
+                        if (Object.keys(tagOverrides).length) {
+                            overrides[storyId].task_tags = tagOverrides;
+                        }
+                    }
+                });
+                return overrides;
+            }
+
+            function hasTaskTagDiff(task) {
+                const original = Array.isArray(task.originalTags) ? [...task.originalTags] : [];
+                const current = Array.isArray(task.tags) ? [...task.tags] : [];
+                if (original.length !== current.length) {
+                    return true;
+                }
+                const sortedOriginal = [...original].sort();
+                const sortedCurrent = [...current].sort();
+                return sortedOriginal.some((tag, index) => tag !== sortedCurrent[index]);
+            }
+
+            function applyStoryTaskOverrides(overrides) {
+                Object.entries(storyTasksState).forEach(([storyId, state]) => {
+                    ensureStoryTaskState(storyId);
+                    state.removed = new Set();
+                    state.drafts = [];
+                    state.base.forEach(task => {
+                        task.tags = Array.isArray(task.originalTags) ? [...task.originalTags] : [];
+                    });
+                });
+
+                Object.entries(overrides || {}).forEach(([storyId, data]) => {
+                    ensureStoryTaskState(storyId);
+                    const state = storyTasksState[storyId];
+                    state.removed = new Set(
+                        (data.removed_task_ids || []).map(id => String(id))
+                    );
+                    state.drafts = (data.added_tasks || []).map(task => ({
+                        id: task.id || `draft-${Date.now()}`,
+                        ref: task.ref || null,
+                        subject: task.subject || '',
+                        tags: Array.isArray(task.tags) ? [...task.tags] : [],
+                        originalTags: [],
+                    }));
+                    const tagOverrides = data.task_tags || {};
+                    Object.entries(tagOverrides).forEach(([taskId, tags]) => {
+                        const target = state.base.find(task => String(task.id) === String(taskId));
+                        if (target) {
+                            target.tags = Array.isArray(tags) ? [...tags] : [];
+                        }
+                    });
+                });
+            }
+
+            function buildStoryTagOverrides() {
+                const overrides = {};
+                Object.entries(storyTagsState).forEach(([storyId, tags]) => {
+                    const currentTags = Array.from(tags || []);
+                    const baseSet = new Set((storyDetails?.[storyId]?.tags) || []);
+                    if (
+                        currentTags.length !== baseSet.size ||
+                        currentTags.some(tag => !baseSet.has(tag))
+                    ) {
+                        overrides[storyId] = currentTags;
+                    }
+                });
+                return overrides;
+            }
+
+            function applyStoryTagOverrides(tagMapping) {
+                resetStoryTagStateFromBase();
+                Object.entries(tagMapping || {}).forEach(([storyId, tags]) => {
+                    storyTagsState[storyId] = new Set(Array.isArray(tags) ? tags : []);
+                });
+            }
+
+            function restoreFromMapping(mapping) {
+                if (!mapping || typeof mapping !== 'object') return;
+
+                const epicsData = mapping.epics && typeof mapping.epics === 'object'
+                    ? mapping.epics
+                    : mapping;
+
+                if (mapping.tag_inventory) {
+                    hydrateTagInventory(mapping.tag_inventory);
+                }
+                applyStoryTagOverrides(mapping.story_tags || {});
+                applyStoryTaskOverrides(mapping.story_tasks || {});
+
+                Object.entries(epicsData).forEach(([epicKey, epicData]) => {
+                    if (!dynamicModules[epicKey]) {
+                        dynamicModules[epicKey] = {
+                            name: epicData.name || epicKey,
+                            description: epicData.description || 'Epic importada',
+                            color: epicData.color || '#6c757d'
+                        };
+                    }
+                });
+
+                const storedVersions = Array.isArray(mapping.versions) && mapping.versions.length
+                    ? mapping.versions
+                    : DEFAULT_VERSIONS;
+                versionLabelSet = new Set(storedVersions);
+
+                const storedLaneOrder = Array.isArray(mapping.lane_order) ? mapping.lane_order : null;
+                savedLaneOrder = storedLaneOrder;
+                initializeBoard(storedLaneOrder);
+                clearAllStories();
+
+                Object.entries(epicsData).forEach(([epicKey, epicData]) => {
+                    const swimlanes = epicData.swimlanes || {};
+                    Object.entries(swimlanes).forEach(([versionLabel, stories]) => {
+                        addVersionLabel(versionLabel);
+                        const container = ensureSwimlane(epicKey, versionLabel);
+                        if (!container) return;
+                        stories.forEach(story => {
+                            const card = createStoryCard({
+                                item_ref: story.ref,
+                                item_id: story.id,
+                                item_subject: story.subject,
+                                current_epic_name: story.current_epic_name,
+                                proposed_epic: epicKey,
+                                proposed_tags: story.proposed_tags || [],
+                                confidence: story.confidence ?? 0.5,
+                                reason: story.reason || '',
+                                version: story.version_raw ? Number(story.version_raw) : null,
+                                milestone_name: story.milestone_name || story.version_label
+                            }, versionLabel);
+                            container.appendChild(card);
+                        });
+                    });
+                });
+                updateStoryCounts();
+                refreshAllStoryCards();
+            }
+
+            function loadDraftFromLocalStorage() {
+                const saved = localStorage.getItem(boardStateKey);
+                if (!saved) return;
+                try {
+                    const mapping = JSON.parse(saved);
+                    restoreFromMapping(mapping);
+                } catch (error) {
+                    console.error('Error loading draft from localStorage', error);
+                }
+            }
+
+            async function saveDraft() {
+                const mapping = buildCurrentMapping();
+                const totalStories = Object.values(mapping.epics).reduce((acc, epic) => acc + epic.total, 0);
+                try {
+                    await persistDraftToServer(mapping);
+                    saveDraftToLocalStorage();
+                    alert(`✅ Borrador guardado (${totalStories} user stories en ${Object.keys(mapping.epics).length} épicas).`);
+                } catch (error) {
+                    console.error('Error saving draft', error);
+                    alert(`⚠️ No pudimos guardar el borrador: ${error.message || error}`);
+                }
+            }
+
+            async function persistDraftToServer(mapping) {
+                const response = await fetch(`/projects/${projectTaigaId}/draft`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ state: mapping }),
+                });
+                if (!response.ok) {
+                    let message = 'Error desconocido';
+                    try {
+                        const data = await response.json();
+                        message = data?.detail || message;
+                    } catch (_) {
+                        // ignore
+                    }
+                    throw new Error(typeof message === 'string' ? message : JSON.stringify(message));
+                }
+            }
+
+            function handleZoomWheel(event) {
+                if (!event.ctrlKey) {
+                    return;
+                }
+                event.preventDefault();
+                const delta = event.deltaY > 0 ? -0.1 : 0.1;
+                setZoom(currentZoom + delta);
+            }
+
+            function setZoom(value) {
+                currentZoom = Math.min(1.7, Math.max(0.5, value));
+                boardElement.style.transform = `scale(${currentZoom})`;
+                if (zoomLevelEl) {
+                    zoomLevelEl.textContent = `${Math.round(currentZoom * 100)}%`;
+                }
+            }
+
+            async function toggleBoardFullscreen() {
+                const fullscreenTarget = draftLayout || boardWrapper;
+                if (!fullscreenTarget) return;
+                const isActive = document.fullscreenElement === fullscreenTarget;
+                try {
+                    if (isActive) {
+                        if (document.exitFullscreen) {
+                            await document.exitFullscreen();
+                        }
+                    } else if (fullscreenTarget.requestFullscreen) {
+                        await fullscreenTarget.requestFullscreen();
+                    }
+                } catch (error) {
+                    console.error('Error toggling fullscreen', error);
+                } finally {
+                    updateFullscreenButtonState();
+                }
+            }
+
+            function updateFullscreenButtonState() {
+                if (!fullscreenToggleBtn) return;
+                const fullscreenTarget = draftLayout || boardWrapper;
+                const active = fullscreenTarget && document.fullscreenElement === fullscreenTarget;
+                fullscreenToggleBtn.textContent = active
+                    ? '⤢ Salir pantalla completa'
+                    : '⛶ Pantalla completa';
+                if (draftLayout) {
+                    draftLayout.classList.toggle('fullscreen-active', Boolean(active));
+                }
+            }
+
+            function handleFullscreenKeydown(event) {
+                if (event.key === 'F11') {
+                    event.preventDefault();
+                    toggleBoardFullscreen();
+                }
+
+                // Handle Escape key with proper order: task modal -> story modal -> fullscreen
+                if (event.key === 'Escape') {
+                    const taskModal = document.getElementById('task-modal');
+                    const storyModal = document.getElementById('story-modal');
+                    const tagConfigModal = document.getElementById('tag-config-modal');
+                    const authModal = document.getElementById('auth-modal');
+
+                    // Priority 1: Close task modal if open
+                    if (taskModal && taskModal.style.display === 'flex') {
+                        event.preventDefault();
+                        closeTaskModal();
+                        return;
+                    }
+
+                    // Priority 2: Close tag config modal if open
+                    if (tagConfigModal && tagConfigModal.style.display === 'flex') {
+                        event.preventDefault();
+                        closeTagConfigModal();
+                        return;
+                    }
+
+                    // Priority 3: Close auth modal if open
+                    if (authModal && authModal.style.display === 'flex') {
+                        event.preventDefault();
+                        closeAuthModal();
+                        return;
+                    }
+
+                    // Priority 4: Close story modal if open
+                    if (storyModal && storyModal.style.display === 'flex') {
+                        event.preventDefault();
+                        closeStoryModal();
+                        return;
+                    }
+
+                    // Priority 5: Exit fullscreen if active
+                    const fullscreenTarget = draftLayout || boardWrapper;
+                    if (fullscreenTarget && document.fullscreenElement === fullscreenTarget) {
+                        event.preventDefault();
+                        toggleBoardFullscreen();
+                        return;
+                    }
+                }
+            }
+
+            function openStoryModal(storyId) {
+                if (!storyModal) return;
+                const normalizedStoryId = String(storyId);
+                currentModalStoryId = normalizedStoryId;
+                const detail = storyDetails[normalizedStoryId];
+                if (!detail) {
+                    storyModalTitle.textContent = `User Story ${normalizedStoryId}`;
+                    storyModalMeta.textContent = '';
+                } else {
+                    storyModalTitle.textContent = `#${detail.ref || '-'} ${detail.subject || ''}`;
+                    storyModalMeta.textContent = `ID interno: ${detail.id}`;
+
+                    // Initialize editor with story data
+                    initializeStoryEditor(normalizedStoryId, detail);
+                }
+                if (storyTagSelect) {
+                    storyTagSelect.value = '';
+                }
+                renderStoryModalTags(normalizedStoryId);
+                renderModalTasks(normalizedStoryId);
+                storyModal.style.display = 'flex';
+            }
+
+            function closeStoryModal() {
+                if (storyModal) {
+                    storyModal.style.display = 'none';
+                }
+                currentModalStoryId = null;
+            }
+
+            let currentTaskId = null;
+            let currentTask = null;
+
+            function openTaskModal(task) {
+                const taskModal = document.getElementById('task-modal');
+                const taskModalTitle = document.getElementById('task-modal-title');
+                const taskModalMeta = document.getElementById('task-modal-meta');
+
+                if (!taskModal) return;
+
+                // Store current task for editing
+                currentTaskId = task.id;
+                currentTask = task;
+
+                const displayRef = task.source === 'draft' ? 'new' : (task.ref || '—');
+                taskModalTitle.textContent = task.subject || 'Sin título';
+                taskModalMeta.textContent = `Ref: #${displayRef} • Fuente: ${task.source === 'draft' ? 'Borrador' : 'Taiga'}`;
+
+                // Initialize task editor
+                initializeTaskEditor(task);
+
+                taskModal.style.display = 'flex';
+            }
+
+            function closeTaskModal() {
+                const taskModal = document.getElementById('task-modal');
+                if (taskModal) {
+                    taskModal.style.display = 'none';
+                }
+            }
+
+            function renderStoryModalDescription(detail) {
+                if (!storyModalDescriptionText || !storyModalDescriptionHtml) return;
+                const htmlDescription = (detail?.description_html || '').trim();
+                const textDescription = (
+                    detail?.description?.trim() ||
+                    detail?.description_text?.trim() ||
+                    ''
+                );
+
+                // Render markdown in text view
+                if (textDescription) {
+                    if (typeof marked !== 'undefined') {
+                        storyModalDescriptionText.innerHTML = marked.parse(textDescription);
+                        // Render mermaid diagrams in text view too
+                        setTimeout(() => {
+                            if (window.renderMermaidDiagrams) {
+                                window.renderMermaidDiagrams(storyModalDescriptionText);
+                            }
+                        }, 100);
+                    } else {
+                        storyModalDescriptionText.textContent = textDescription;
+                    }
+                } else {
+                    storyModalDescriptionText.textContent = 'Sin descripción registrada';
+                }
+
+                if (htmlDescription) {
+                    storyModalDescriptionHtml.innerHTML = sanitizeModalHtml(htmlDescription);
+                    // Render mermaid diagrams after a short delay to ensure DOM is ready
+                    setTimeout(() => {
+                        if (window.renderMermaidDiagrams) {
+                            window.renderMermaidDiagrams(storyModalDescriptionHtml);
+                        }
+                    }, 100);
+                } else {
+                    storyModalDescriptionHtml.innerHTML = '<em>Sin HTML disponible</em>';
+                }
+                // Cambiar a 'html' por defecto si hay contenido HTML, sino 'text'
+                setActiveDescriptionTab(htmlDescription ? 'html' : 'text');
+            }
+
+            function sanitizeModalHtml(html) {
+                const template = document.createElement('template');
+                template.innerHTML = html;
+                template.content.querySelectorAll('script,style').forEach(node => node.remove());
+                template.content.querySelectorAll('*').forEach(node => {
+                    Array.from(node.attributes).forEach(attr => {
+                        if (attr.name.toLowerCase().startsWith('on')) {
+                            node.removeAttribute(attr.name);
+                        }
+                    });
+                });
+                return template.innerHTML;
+            }
+
+            function setActiveDescriptionTab(target) {
+                const normalized = target || 'text';
+                descriptionTabButtons.forEach(button => {
+                    button.classList.toggle('active', (button.dataset.descriptionTab || 'text') === normalized);
+                });
+                descriptionTabPanels.forEach(panel => {
+                    panel.classList.toggle('active', (panel.dataset.descriptionPanel || 'text') === normalized);
+                });
+            }
+
+            function renderModalTasks(storyId) {
+                if (!modalTaskList) return;
+                const normalizedStoryId = String(storyId);
+                modalTaskList.innerHTML = '';
+                ensureStoryTaskState(normalizedStoryId);
+                const state = storyTasksState[normalizedStoryId];
+                const rows = [
+                    ...state.base.map(task => ({
+                        ...task,
+                        source: 'taiga',
+                        removed: state.removed.has(String(task.id)),
+                    })),
+                    ...state.drafts.map(task => ({
+                        ...task,
+                        source: 'draft',
+                        removed: false,
+                    })),
+                ];
+
+                if (!rows.length) {
+                    const empty = document.createElement('div');
+                    empty.className = 'modal-task-empty';
+                    empty.textContent = 'Sin tareas registradas';
+                    modalTaskList.appendChild(empty);
+                    return;
+                }
+
+                const fragment = document.createDocumentFragment();
+                rows.forEach(task => {
+                    fragment.appendChild(createModalTaskRow(normalizedStoryId, task));
+                });
+                modalTaskList.appendChild(fragment);
+            }
+
+            function createModalTaskRow(storyId, task) {
+                const row = document.createElement('div');
+                row.className = `modal-task-row${task.removed ? ' modal-task-row-removed' : ''}`;
+                row.dataset.storyId = storyId;
+                row.dataset.taskId = task.id || '';
+                row.dataset.source = task.source;
+
+                const displayRef = task.source === 'draft' ? 'new' : (task.ref || '—');
+                const header = document.createElement('div');
+                header.className = 'modal-task-header';
+                const title = document.createElement('div');
+                title.className = 'modal-task-title';
+                title.textContent = `${task.subject || 'Sin título'}`;
+                title.style.cssText = 'cursor: pointer; color: #667eea; font-weight: 500;';
+                title.title = 'Click para ver detalles';
+                title.addEventListener('click', () => openTaskModal(task));
+                const meta = document.createElement('div');
+                meta.className = 'modal-task-header-meta';
+                const sourceBadge = document.createElement('span');
+                sourceBadge.className = `task-source-badge ${task.source === 'draft' ? 'task-source-draft' : ''}`;
+                sourceBadge.textContent = task.source === 'draft' ? 'Borrador' : 'Taiga';
+                meta.appendChild(sourceBadge);
+                const statusBadge = document.createElement('span');
+                const statusClass = task.removed ? 'task-status-removed' : 'task-status-active';
+                statusBadge.className = `task-status-pill ${statusClass}`;
+                statusBadge.textContent = task.source === 'draft'
+                    ? 'Nuevo'
+                    : task.removed
+                        ? 'Excluida'
+                        : 'Activa';
+                meta.appendChild(statusBadge);
+                header.appendChild(title);
+                header.appendChild(meta);
+
+                const body = document.createElement('div');
+                body.className = 'modal-task-body';
+                const refText = document.createElement('div');
+                refText.textContent = `Ref: #${displayRef}`;
+                body.appendChild(refText);
+
+                const tagsContainer = document.createElement('div');
+                tagsContainer.className = 'modal-task-tags';
+                const taskTags = Array.isArray(task.tags) ? task.tags : [];
+                if (!taskTags.length) {
+                    tagsContainer.innerHTML = '<span class="tag">sin-tags</span>';
+                } else {
+                    taskTags.forEach(tag => {
+                        const chip = createTagChipElement(tag, getTagColor(tag), 'task-tag-remove-btn', {
+                            storyId,
+                            taskId: task.id,
+                            tagName: tag,
+                        });
+                        tagsContainer.appendChild(chip);
+                    });
+                }
+
+                const tagControls = document.createElement('div');
+                tagControls.className = 'task-tag-controls';
+                const tagSelect = document.createElement('select');
+                tagSelect.className = 'task-tag-select';
+                tagSelect.dataset.storyId = storyId;
+                tagSelect.dataset.taskId = task.id || '';
+                const placeholder = document.createElement('option');
+                placeholder.value = '';
+                placeholder.disabled = true;
+                placeholder.selected = true;
+                placeholder.textContent = 'Seleccionar tag';
+                tagSelect.appendChild(placeholder);
+                const availableTags = getInventoryList()
+                    .filter(({ name }) => !taskTags.includes(name));
+                availableTags.forEach(({ name }) => {
+                    const option = document.createElement('option');
+                    option.value = name;
+                    option.textContent = name;
+                    tagSelect.appendChild(option);
+                });
+                tagSelect.disabled = availableTags.length === 0;
+                tagControls.appendChild(tagSelect);
+                const addBtn = document.createElement('button');
+                addBtn.type = 'button';
+                addBtn.className = 'task-tag-add-btn';
+                addBtn.dataset.storyId = storyId;
+                addBtn.dataset.taskId = task.id || '';
+                addBtn.textContent = 'Agregar tag';
+                addBtn.disabled = availableTags.length === 0;
+                tagControls.appendChild(addBtn);
+
+                const actions = document.createElement('div');
+                actions.className = 'modal-task-actions';
+                if (task.source === 'taiga') {
+                    const toggleBtn = document.createElement('button');
+                    toggleBtn.type = 'button';
+                    toggleBtn.className = 'task-toggle-btn';
+                    toggleBtn.dataset.storyId = storyId;
+                    toggleBtn.dataset.taskId = task.id || '';
+                    toggleBtn.textContent = task.removed ? 'Reintegrar' : 'Excluir del borrador';
+                    actions.appendChild(toggleBtn);
+                } else {
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.type = 'button';
+                    deleteBtn.className = 'task-remove-btn';
+                    deleteBtn.dataset.storyId = storyId;
+                    deleteBtn.dataset.taskId = task.id;
+                    deleteBtn.textContent = 'Eliminar borrador';
+                    actions.appendChild(deleteBtn);
+                }
+
+                row.appendChild(header);
+                row.appendChild(body);
+                row.appendChild(tagsContainer);
+                row.appendChild(tagControls);
+                row.appendChild(actions);
+                return row;
+            }
+
+            function handleModalTaskListClick(event) {
+                const addBtn = event.target.closest('.task-tag-add-btn');
+                if (addBtn) {
+                    const { storyId, taskId } = addBtn.dataset;
+                    const controls = addBtn.closest('.task-tag-controls');
+                    const select = controls?.querySelector('.task-tag-select');
+                    const tagName = select?.value;
+                    if (storyId && taskId !== undefined && tagName) {
+                        addTagToTask(storyId, taskId, tagName);
+                    }
+                    return;
+                }
+
+                const removeTagBtn = event.target.closest('.task-tag-remove-btn');
+                if (removeTagBtn) {
+                    const { storyId, taskId, tagName } = removeTagBtn.dataset;
+                    if (storyId && tagName !== undefined) {
+                        removeTagFromTask(storyId, taskId, tagName);
+                    }
+                    return;
+                }
+
+                const toggleBtn = event.target.closest('.task-toggle-btn');
+                if (toggleBtn) {
+                    toggleTaskRemoval(toggleBtn.dataset.storyId, toggleBtn.dataset.taskId);
+                    return;
+                }
+
+                const deleteBtn = event.target.closest('.task-remove-btn');
+                if (deleteBtn) {
+                    deleteDraftTask(deleteBtn.dataset.storyId, deleteBtn.dataset.taskId);
+                }
+            }
+
+            function addTagToTask(storyId, taskId, tagName) {
+                if (!tagName) return;
+                const entry = findTaskEntry(storyId, taskId);
+                if (!entry) return;
+                entry.task.tags = Array.isArray(entry.task.tags) ? entry.task.tags : [];
+                if (entry.task.tags.includes(tagName)) {
+                    return;
+                }
+                entry.task.tags.push(tagName);
+                refreshStoryCard(storyId);
+                if (currentModalStoryId === String(storyId)) {
+                    renderModalTasks(storyId);
+                }
+                saveDraftToLocalStorage();
+            }
+
+            function removeTagFromTask(storyId, taskId, tagName) {
+                const entry = findTaskEntry(storyId, taskId);
+                if (!entry || !Array.isArray(entry.task.tags)) return;
+                entry.task.tags = entry.task.tags.filter(tag => tag !== tagName);
+                refreshStoryCard(storyId);
+                if (currentModalStoryId === String(storyId)) {
+                    renderModalTasks(storyId);
+                }
+                saveDraftToLocalStorage();
+            }
+
+            function findTaskEntry(storyId, taskId) {
+                const normalizedStoryId = String(storyId);
+                ensureStoryTaskState(normalizedStoryId);
+                const state = storyTasksState[normalizedStoryId];
+                const taskKey = String(taskId ?? '');
+                const baseTask = state.base.find(task => String(task.id) === taskKey);
+                if (baseTask) {
+                    return { task: baseTask, source: 'taiga' };
+                }
+                const draftTask = state.drafts.find(task => String(task.id) === taskKey);
+                if (draftTask) {
+                    return { task: draftTask, source: 'draft' };
+                }
+                return null;
+            }
+
+            function openAuthModal() {
+                if (!authModal) return;
+                authModal.style.display = 'flex';
+                if (authError) {
+                    authError.style.display = 'none';
+                    authError.textContent = '';
+                }
+                if (authInput) {
+                    authInput.value = '';
+                    authInput.focus();
+                }
+            }
+
+            function closeAuthModal() {
+                if (authModal) {
+                    authModal.style.display = 'none';
+                }
+            }
+
+            async function submitAuthToken(event) {
+                event.preventDefault();
+                if (!authInput) return;
+                const token = authInput.value.trim();
+                if (!token) {
+                    showAuthError('El token es obligatorio');
+                    return;
+                }
+                try {
+                    await sendAuthToken(token);
+                    closeAuthModal();
+                    alert('✅ Token guardado correctamente. Recarga la página para continuar.');
+                } catch (error) {
+                    showAuthError(error.message || 'No pudimos validar el token');
+                }
+            }
+
+            async function sendAuthToken(token) {
+                const response = await fetch('/auth', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ token })
+                });
+                if (!response.ok) {
+                    const data = await response.json().catch(() => ({}));
+                    const message = data?.detail || 'Error estableciendo el token';
+                    throw new Error(typeof message === 'string' ? message : JSON.stringify(message));
+                }
+            }
+
+            function showAuthError(message) {
+                if (!authError) return;
+                authError.textContent = message;
+                authError.style.display = 'block';
+            }
+
+            window.closeStoryModal = closeStoryModal;
+            window.closeAuthModal = closeAuthModal;
+            window.closeTagConfigModal = closeTagConfigModal;
+        })();
+    </script>
+
+    <!-- Mermaid.js for diagram rendering -->
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'default',
+            securityLevel: 'loose',
+            flowchart: {
+                useMaxWidth: true,
+                htmlLabels: true
+            }
+        });
+
+        // Make mermaid available globally
+        window.mermaid = mermaid;
+
+        // Function to render mermaid diagrams in an element
+        window.renderMermaidDiagrams = async function(container) {
+            if (!container) return;
+
+            // Find all code blocks with mermaid - including Taiga's codehilite format
+            const mermaidBlocks = container.querySelectorAll('pre code.language-mermaid, code.language-mermaid, .mermaid, div.codehilite pre code');
+
+            if (mermaidBlocks.length === 0) return;
+
+            for (let i = 0; i < mermaidBlocks.length; i++) {
+                const block = mermaidBlocks[i];
+                let code = block.textContent;
+
+                // Check if this is actually a mermaid block
+                if (!code.includes('mermaid') && !code.includes('graph') && !code.includes('flowchart') &&
+                    !code.includes('sequenceDiagram') && !code.includes('classDiagram')) {
+                    continue;
+                }
+
+                // Clean up the code: remove ```mermaid markers and syntax highlighting artifacts
+                code = code.replace(/```mermaid/gi, '').replace(/```/g, '').trim();
+
+                // Create a div for the diagram
+                const div = document.createElement('div');
+                div.className = 'mermaid-diagram';
+                div.style.cssText = 'background: white; padding: 20px; border-radius: 8px; margin: 15px 0; overflow-x: auto;';
+
+                try {
+                    const id = `mermaid-${Date.now()}-${i}`;
+                    const { svg } = await mermaid.render(id, code);
+                    div.innerHTML = svg;
+
+                    // Replace the code block or its container with the rendered diagram
+                    // For Taiga's codehilite, replace the entire div.codehilite
+                    let target = block;
+                    if (block.closest('div.codehilite')) {
+                        target = block.closest('div.codehilite');
+                    } else if (block.parentElement && block.parentElement.tagName === 'PRE') {
+                        target = block.parentElement;
+                    }
+                    target.replaceWith(div);
+                } catch (error) {
+                    console.error('Error rendering mermaid diagram:', error);
+                    div.innerHTML = `<pre style="color: red;">Error rendering diagram: ${error.message}</pre>`;
+                    if (block.parentElement && block.parentElement.tagName === 'PRE') {
+                        block.parentElement.replaceWith(div);
+                    } else {
+                        block.replaceWith(div);
+                    }
+                }
+            }
+        };
+    </script>
+
+    <!-- Marked.js for markdown parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
+    <script>
+        // Configure marked for safe HTML rendering
+        if (typeof marked !== 'undefined') {
+            marked.setOptions({
+                breaks: true,
+                gfm: true,
+                headerIds: false,
+                mangle: false
+            });
+        }
+
+        // Markdown preview and editing functionality
+        let currentEditingStory = null;
+        let currentEditingTask = null;
+
+        // Initialize story editor when modal opens
+        window.initializeStoryEditor = function(storyId, detail) {
+            console.log('initializeStoryEditor called with:', storyId, detail);
+
+            // Set current editing story
+            currentEditingStory = {
+                id: storyId,
+                taiga_id: detail.taiga_id,
+                description: detail.description || '',
+                version: detail.version || 1
+            };
+
+            // Check for draft in localStorage
+            try {
+                const storyDrafts = JSON.parse(localStorage.getItem('story_drafts') || '{}');
+                if (storyDrafts[storyId]) {
+                    console.log('Found draft for story:', storyId, storyDrafts[storyId]);
+                    currentEditingStory.description = storyDrafts[storyId].description;
+                    console.log('Loaded description from draft');
+                }
+            } catch (e) {
+                console.error('Error loading draft from localStorage:', e);
+            }
+
+            // Get editor elements
+            const editor = document.getElementById('story-description-editor');
+            const previewPanel = document.getElementById('story-description-preview');
+            const htmlPanel = document.getElementById('story-description-html-view');
+
+            if (!editor || !previewPanel || !htmlPanel) {
+                console.error('Editor elements not found');
+                return;
+            }
+
+            // Set editor content
+            editor.value = currentEditingStory.description;
+
+            // Set HTML content
+            const htmlDescription = (detail?.description_html || '').trim() || '<em>Sin HTML disponible</em>';
+            htmlPanel.innerHTML = htmlDescription;
+
+            // Setup tab switching
+            const modal = document.getElementById('story-modal');
+            const editSection = document.getElementById('story-edit-section');
+            const editTabButtons = editSection.querySelectorAll('[data-edit-tab]');
+            const editTabPanels = editSection.querySelectorAll('[data-edit-panel]');
+
+            console.log('Found tab buttons:', editTabButtons.length);
+            console.log('Found tab panels:', editTabPanels.length);
+
+            // Remove previous event listeners by cloning buttons
+            editTabButtons.forEach(button => {
+                const newButton = button.cloneNode(true);
+                button.parentNode.replaceChild(newButton, button);
+            });
+
+            // Re-query buttons after cloning
+            const newEditTabButtons = editSection.querySelectorAll('[data-edit-tab]');
+            const newEditTabPanels = editSection.querySelectorAll('[data-edit-panel]');
+
+            newEditTabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const targetTab = button.getAttribute('data-edit-tab');
+                    console.log('Tab clicked:', targetTab);
+
+                    // Remove active state from all buttons and panels
+                    newEditTabButtons.forEach(btn => {
+                        btn.classList.remove('active');
+                        btn.style.borderBottom = '3px solid transparent';
+                        btn.style.fontWeight = '500';
+                        btn.style.background = '#f3f4f6';
+                        btn.style.color = '#6b7280';
+                    });
+                    newEditTabPanels.forEach(panel => {
+                        panel.classList.remove('active');
+                        panel.style.display = 'none';
+                    });
+
+                    // Activate selected button and panel
+                    button.classList.add('active');
+                    button.style.borderBottom = '3px solid #3b82f6';
+                    button.style.fontWeight = '600';
+                    button.style.background = 'white';
+                    button.style.color = '#1f2937';
+
+                    const targetPanel = editSection.querySelector(`[data-edit-panel="${targetTab}"]`);
+                    if (targetPanel) {
+                        targetPanel.classList.add('active');
+                        targetPanel.style.display = 'block';
+                        console.log('Activated panel:', targetTab);
+
+                        // Update preview if switching to preview tab
+                        if (targetTab === 'preview') {
+                            updateStoryMarkdownPreview();
+                        }
+                    }
+                });
+            });
+
+            // Add input listener for live preview
+            if (!editor.dataset.listenerAttached) {
+                editor.addEventListener('input', () => {
+                    const activePreviewPanel = editSection.querySelector('[data-edit-panel="preview"]');
+                    if (activePreviewPanel && activePreviewPanel.classList.contains('active')) {
+                        updateStoryMarkdownPreview();
+                    }
+                });
+                editor.dataset.listenerAttached = 'true';
+                console.log('Input listener attached to editor');
+            }
+
+            // Update preview initially
+            updateStoryMarkdownPreview();
+
+            console.log('Story editor initialized successfully');
+        };
+
+        // Initialize task editor when modal opens
+        window.initializeTaskEditor = function(task) {
+            console.log('initializeTaskEditor called with:', task);
+
+            // Set current editing task
+            currentEditingTask = {
+                id: task.id,
+                taiga_id: task.taiga_id || task.id,
+                description: task.description || '',
+                version: task.version || 1
+            };
+
+            // Check for draft in localStorage
+            try {
+                const taskDrafts = JSON.parse(localStorage.getItem('task_drafts') || '{}');
+                if (taskDrafts[task.id]) {
+                    console.log('Found draft for task:', task.id, taskDrafts[task.id]);
+                    currentEditingTask.description = taskDrafts[task.id].description;
+                    console.log('Loaded description from draft');
+                }
+            } catch (e) {
+                console.error('Error loading draft from localStorage:', e);
+            }
+
+            // Get editor elements
+            const editor = document.getElementById('task-description-editor');
+            const previewPanel = document.getElementById('task-description-preview');
+            const htmlPanel = document.getElementById('task-description-html-view');
+
+            if (!editor || !previewPanel || !htmlPanel) {
+                console.error('Task editor elements not found');
+                return;
+            }
+
+            // Set editor content
+            editor.value = currentEditingTask.description;
+
+            // Set HTML content
+            const htmlDescription = (task?.description_html || '').trim() || '<em>Sin HTML disponible</em>';
+            htmlPanel.innerHTML = htmlDescription;
+
+            // Setup tab switching
+            const taskModal = document.getElementById('task-modal');
+            const editSection = document.getElementById('task-edit-section');
+            const editTabButtons = editSection.querySelectorAll('[data-task-edit-tab]');
+            const editTabPanels = editSection.querySelectorAll('[data-task-edit-panel]');
+
+            console.log('Found task tab buttons:', editTabButtons.length);
+            console.log('Found task tab panels:', editTabPanels.length);
+
+            // Remove previous event listeners by cloning buttons
+            editTabButtons.forEach(button => {
+                const newButton = button.cloneNode(true);
+                button.parentNode.replaceChild(newButton, button);
+            });
+
+            // Re-query buttons after cloning
+            const newEditTabButtons = editSection.querySelectorAll('[data-task-edit-tab]');
+            const newEditTabPanels = editSection.querySelectorAll('[data-task-edit-panel]');
+
+            newEditTabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const targetTab = button.getAttribute('data-task-edit-tab');
+                    console.log('Task tab clicked:', targetTab);
+
+                    // Remove active state from all buttons and panels
+                    newEditTabButtons.forEach(btn => {
+                        btn.classList.remove('active');
+                        btn.style.borderBottom = '3px solid transparent';
+                        btn.style.fontWeight = '500';
+                        btn.style.background = '#f3f4f6';
+                        btn.style.color = '#6b7280';
+                    });
+                    newEditTabPanels.forEach(panel => {
+                        panel.classList.remove('active');
+                        panel.style.display = 'none';
+                    });
+
+                    // Activate selected button and panel
+                    button.classList.add('active');
+                    button.style.borderBottom = '3px solid #3b82f6';
+                    button.style.fontWeight = '600';
+                    button.style.background = 'white';
+                    button.style.color = '#1f2937';
+
+                    const targetPanel = editSection.querySelector(`[data-task-edit-panel="${targetTab}"]`);
+                    if (targetPanel) {
+                        targetPanel.classList.add('active');
+                        targetPanel.style.display = 'block';
+                        console.log('Activated task panel:', targetTab);
+
+                        // Update preview if switching to preview tab
+                        if (targetTab === 'preview') {
+                            updateTaskMarkdownPreview();
+                        }
+                    }
+                });
+            });
+
+            // Add input listener for live preview
+            if (!editor.dataset.listenerAttached) {
+                editor.addEventListener('input', () => {
+                    const activePreviewPanel = editSection.querySelector('[data-task-edit-panel="preview"]');
+                    if (activePreviewPanel && activePreviewPanel.classList.contains('active')) {
+                        updateTaskMarkdownPreview();
+                    }
+                });
+                editor.dataset.listenerAttached = 'true';
+                console.log('Input listener attached to task editor');
+            }
+
+            // Update preview initially
+            updateTaskMarkdownPreview();
+
+            console.log('Task editor initialized successfully');
+        };
+
+        window.enableStoryEditMode = function(storyId) {
+            console.log('enableStoryEditMode called with:', storyId);
+            console.log('window.storyDetails:', window.storyDetails);
+            console.log('Looking for:', String(storyId));
+
+            const detail = window.storyDetails[String(storyId)];
+
+            if (!detail) {
+                console.error('Story detail not found for ID:', storyId);
+                console.log('Available story IDs:', Object.keys(window.storyDetails));
+                alert('No se pudo encontrar los detalles de la historia. ID: ' + storyId);
+                return;
+            }
+
+            console.log('Found detail:', detail);
+
+            currentEditingStory = {
+                id: storyId,
+                taiga_id: detail.taiga_id,
+                description: detail.description || '',
+                version: detail.version || 1
+            };
+
+            console.log('currentEditingStory:', currentEditingStory);
+
+            // Create edit UI
+            const modal = document.getElementById('story-modal');
+            const modalBody = modal.querySelector('.modal-body');
+
+            // Hide view tabs (buscar específicamente la sección de vista)
+            const viewSection = document.getElementById('story-view-section');
+            if (viewSection) {
+                viewSection.style.display = 'none';
+                console.log('View section hidden');
+            } else {
+                console.warn('View section not found, trying fallback selector');
+                const fallbackViewSection = modal.querySelector('.modal-section:not(#story-edit-section)');
+                if (fallbackViewSection) {
+                    fallbackViewSection.style.display = 'none';
+                }
+            }
+
+            // Remove any existing edit section
+            const existingEditSection = document.getElementById('story-edit-section');
+            if (existingEditSection) {
+                existingEditSection.remove();
+                console.log('Removed existing edit section');
+            }
+
+            // Create edit section
+            const editSection = document.createElement('div');
+            editSection.className = 'modal-section';
+            editSection.id = 'story-edit-section';
+
+            // Get HTML description for HTML tab
+            const htmlDescription = (detail?.description_html || '').trim() || '<em>Sin HTML disponible</em>';
+
+            editSection.innerHTML = `
+                <div style="margin-bottom: 15px; display: flex; gap: 10px; justify-content: space-between; align-items: center; padding: 10px; background: #f8f9fa; border-radius: 6px;">
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn-secondary" onclick="saveStoryToDraft()" style="background: #6c757d; color: white;">💾 Guardar en Draft</button>
+                        <button class="btn-primary" onclick="saveStoryToTaiga()" style="background: #667eea; color: white;">🚀 Enviar a Taiga</button>
+                    </div>
+                    <button class="btn-secondary" onclick="cancelStoryEdit()" style="background: #dc3545; color: white;">✕ Cancelar</button>
+                </div>
+                <div class="modal-tabs" style="display: flex; gap: 5px; margin-bottom: 15px; border-bottom: 2px solid #dee2e6;">
+                    <button type="button" class="modal-tab active" data-edit-tab="source" style="padding: 10px 20px; border: none; background: transparent; cursor: pointer; border-bottom: 3px solid #667eea; font-weight: 600;">Source</button>
+                    <button type="button" class="modal-tab" data-edit-tab="preview" style="padding: 10px 20px; border: none; background: transparent; cursor: pointer; border-bottom: 3px solid transparent;">Vista Previa</button>
+                    <button type="button" class="modal-tab" data-edit-tab="html" style="padding: 10px 20px; border: none; background: transparent; cursor: pointer; border-bottom: 3px solid transparent;">HTML</button>
+                </div>
+                <div class="modal-tab-panel active" data-edit-panel="source" style="display: block;">
+                    <textarea id="story-description-editor" style="width: 100%; min-height: 400px; font-family: monospace; padding: 10px; border: 1px solid #ddd; border-radius: 4px; resize: vertical;">${currentEditingStory.description}</textarea>
+                </div>
+                <div class="description modal-tab-panel" data-edit-panel="preview" id="story-description-preview" style="display: none; min-height: 400px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; background: #fafafa;"></div>
+                <div class="description modal-tab-panel" data-edit-panel="html" id="story-description-html-view" style="display: none; min-height: 400px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; background: #fafafa;">${htmlDescription}</div>
+            `;
+
+            modalBody.appendChild(editSection);
+            console.log('Edit section appended to modal body');
+            console.log('Edit section HTML:', editSection.innerHTML.substring(0, 200) + '...');
+            console.log('Edit section display:', window.getComputedStyle(editSection).display);
+
+            // Setup tab switching
+            const editTabButtons = editSection.querySelectorAll('[data-edit-tab]');
+            const editTabPanels = editSection.querySelectorAll('[data-edit-panel]');
+
+            console.log('Found tab buttons:', editTabButtons.length);
+            console.log('Found tab panels:', editTabPanels.length);
+
+            editTabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const targetTab = button.getAttribute('data-edit-tab');
+                    console.log('Tab clicked:', targetTab);
+
+                    // Remove active state from all buttons and panels
+                    editTabButtons.forEach(btn => {
+                        btn.classList.remove('active');
+                        btn.style.borderBottom = '3px solid transparent';
+                        btn.style.fontWeight = 'normal';
+                    });
+                    editTabPanels.forEach(panel => {
+                        panel.classList.remove('active');
+                        panel.style.display = 'none';
+                    });
+
+                    // Activate selected button and panel
+                    button.classList.add('active');
+                    button.style.borderBottom = '3px solid #667eea';
+                    button.style.fontWeight = '600';
+
+                    const targetPanel = editSection.querySelector(`[data-edit-panel="${targetTab}"]`);
+                    if (targetPanel) {
+                        targetPanel.classList.add('active');
+                        targetPanel.style.display = 'block';
+                        console.log('Activated panel:', targetTab);
+
+                        // Update preview if switching to preview tab
+                        if (targetTab === 'preview') {
+                            updateStoryMarkdownPreview();
+                        }
+                    }
+                });
+            });
+
+            // Live preview on input
+            const editor = document.getElementById('story-description-editor');
+            if (editor) {
+                editor.addEventListener('input', () => {
+                    if (editSection.querySelector('[data-edit-panel="preview"]').classList.contains('active')) {
+                        updateStoryMarkdownPreview();
+                    }
+                });
+                console.log('Editor input listener attached');
+            } else {
+                console.error('Editor textarea not found!');
+            }
+
+            // Update preview initially
+            updateStoryMarkdownPreview();
+
+            // Change modal header
+            const editBtn = modal.querySelector('.story-edit-btn');
+            if (editBtn) {
+                editBtn.style.display = 'none';
+                console.log('Edit button hidden');
+            } else {
+                console.warn('Edit button not found');
+            }
+
+            console.log('enableStoryEditMode completed successfully');
+        };
+
+        window.updateStoryMarkdownPreview = function() {
+            const editor = document.getElementById('story-description-editor');
+            const preview = document.getElementById('story-description-preview');
+            if (!editor || !preview) return;
+
+            const markdown = editor.value;
+            if (typeof marked !== 'undefined') {
+                preview.innerHTML = marked.parse(markdown);
+                // Render mermaid diagrams if present
+                if (typeof renderMermaidDiagrams === 'function') {
+                    renderMermaidDiagrams(preview);
+                }
+            } else {
+                preview.textContent = markdown;
+            }
+        };
+
+        window.cancelStoryEdit = function() {
+            console.log('cancelStoryEdit called');
+            const modal = document.getElementById('story-modal');
+            const editSection = document.getElementById('story-edit-section');
+            const viewSection = document.getElementById('story-view-section');
+
+            if (editSection) {
+                editSection.remove();
+                console.log('Edit section removed');
+            }
+
+            if (viewSection) {
+                viewSection.style.display = 'block';
+                console.log('View section shown');
+            } else {
+                console.warn('View section not found, trying fallback');
+                const fallbackViewSection = modal.querySelector('.modal-section:not(#story-edit-section)');
+                if (fallbackViewSection) {
+                    fallbackViewSection.style.display = 'block';
+                }
+            }
+
+            const editBtn = modal.querySelector('.story-edit-btn');
+            if (editBtn) {
+                editBtn.style.display = 'inline-block';
+                console.log('Edit button shown');
+            }
+
+            currentEditingStory = null;
+            console.log('cancelStoryEdit completed');
+        };
+
+        // Save story to draft (local storage)
+        window.saveStoryToDraft = function() {
+            console.log('saveStoryToDraft called');
+            if (!currentEditingStory) {
+                console.error('No currentEditingStory');
+                alert('❌ Error: No hay historia en edición');
+                return;
+            }
+
+            const editor = document.getElementById('story-description-editor');
+            if (!editor) {
+                console.error('Editor not found');
+                alert('❌ Error: Editor no encontrado');
+                return;
+            }
+
+            const newDescription = editor.value;
+            console.log('New description:', newDescription.substring(0, 100) + '...');
+
+            // Update local data
+            const detail = window.storyDetails[String(currentEditingStory.id)];
+            if (detail) {
+                detail.description = newDescription;
+                detail.description_text = newDescription;
+                // Render markdown to HTML for preview
+                if (typeof marked !== 'undefined') {
+                    detail.description_html = marked.parse(newDescription);
+                }
+                detail.modified_locally = true; // Mark as modified
+                currentEditingStory.description = newDescription;
+            }
+
+            // Save to localStorage
+            try {
+                let storyDrafts = JSON.parse(localStorage.getItem('story_drafts') || '{}');
+                storyDrafts[currentEditingStory.id] = {
+                    description: newDescription,
+                    timestamp: new Date().toISOString(),
+                    taiga_id: currentEditingStory.taiga_id
+                };
+                localStorage.setItem('story_drafts', JSON.stringify(storyDrafts));
+                console.log('Saved to localStorage:', storyDrafts[currentEditingStory.id]);
+            } catch (e) {
+                console.error('Error saving to localStorage:', e);
+            }
+
+            // Update preview panel
+            updateStoryMarkdownPreview();
+
+            alert('💾 Descripción guardada en Draft localmente');
+            console.log('Story saved to draft successfully');
+        };
+
+        // Save story to Taiga
+        window.saveStoryToTaiga = async function() {
+            console.log('saveStoryToTaiga called');
+            console.log('currentEditingStory:', currentEditingStory);
+
+            if (!currentEditingStory) {
+                console.error('No currentEditingStory');
+                alert('❌ Error: No hay historia en edición');
+                return;
+            }
+
+            if (!currentEditingStory.taiga_id) {
+                console.error('No taiga_id in currentEditingStory:', currentEditingStory);
+                alert('❌ Error: Esta historia no tiene ID de Taiga.\nSolo se pueden sincronizar historias que ya existen en Taiga.');
+                return;
+            }
+
+            const editor = document.getElementById('story-description-editor');
+            if (!editor) {
+                console.error('Editor not found');
+                alert('❌ Error: Editor no encontrado');
+                return;
+            }
+
+            const newDescription = editor.value;
+            console.log('Sending to Taiga:', newDescription.substring(0, 100) + '...');
+            console.log('taiga_id:', currentEditingStory.taiga_id);
+            console.log('version (local):', currentEditingStory.version);
+
+            try {
+                // First, get the current version from Taiga
+                console.log('Fetching current version from Taiga...');
+                const getCurrentResponse = await fetch(`/user-stories/${currentEditingStory.taiga_id}`);
+                if (!getCurrentResponse.ok) {
+                    alert('❌ Error al obtener versión actual de Taiga');
+                    return;
+                }
+                const currentStory = await getCurrentResponse.json();
+                const currentVersion = currentStory.version;
+                console.log('version (Taiga):', currentVersion);
+
+                // Update with current version
+                const url = `/user-stories/${currentEditingStory.taiga_id}?description=${encodeURIComponent(newDescription)}&version=${currentVersion}`;
+                console.log('PATCH URL:', url);
+
+                const response = await fetch(url, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    let errorMessage = 'Error desconocido';
+                    try {
+                        const error = await response.json();
+                        console.error('Error response:', error);
+
+                        // Check for version conflict
+                        if (error.detail && error.detail.version) {
+                            alert(`❌ Conflicto de versión:\n\nEl elemento fue modificado por otra persona mientras lo editabas.\n\nPor favor:\n1. Copia tu texto del editor\n2. Cierra y vuelve a abrir el modal\n3. Pega tu texto y vuelve a enviar`);
+                            return;
+                        }
+
+                        errorMessage = JSON.stringify(error.detail || error, null, 2);
+                    } catch (e) {
+                        errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+                    }
+                    alert(`❌ Error al actualizar:\n${errorMessage}`);
+                    return;
+                }
+
+                const updated = await response.json();
+                console.log('Updated from Taiga:', updated);
+
+                // Update local data
+                const detail = window.storyDetails[String(currentEditingStory.id)];
+                if (detail) {
+                    detail.description = updated.description;
+                    detail.description_html = updated.description_html;
+                    detail.description_text = updated.description;
+                    detail.version = updated.version;
+                    detail.modified_locally = false;
+                    currentEditingStory.description = updated.description;
+                    currentEditingStory.version = updated.version;
+                }
+
+                // Update editor and preview
+                editor.value = updated.description;
+                const htmlPanel = document.getElementById('story-description-html-view');
+                if (htmlPanel) {
+                    htmlPanel.innerHTML = updated.description_html || '<em>Sin HTML disponible</em>';
+                    // Render mermaid diagrams in HTML panel
+                    setTimeout(() => {
+                        if (window.renderMermaidDiagrams) {
+                            window.renderMermaidDiagrams(htmlPanel);
+                        }
+                    }, 100);
+                }
+                updateStoryMarkdownPreview();
+
+                // Remove draft from localStorage
+                try {
+                    const storyDrafts = JSON.parse(localStorage.getItem('story_drafts') || '{}');
+                    delete storyDrafts[currentEditingStory.id];
+                    localStorage.setItem('story_drafts', JSON.stringify(storyDrafts));
+                    console.log('Draft removed from localStorage');
+                } catch (e) {
+                    console.error('Error removing draft from localStorage:', e);
+                }
+
+                alert('🚀 Descripción sincronizada con Taiga correctamente');
+                console.log('Story saved to Taiga successfully');
+            } catch (error) {
+                console.error('Error saving description:', error);
+                alert(`❌ Error: ${error.message}`);
+            }
+        };
+
+        // Open story in Taiga
+        window.openStoryInTaiga = function(storyId) {
+            const detail = window.storyDetails[String(storyId)];
+            if (!detail || !detail.taiga_id) {
+                alert('Esta historia no tiene un ID de Taiga asociado');
+                return;
+            }
+            // Construct Taiga URL (assuming standard Taiga URL format)
+            const taigaUrl = `https://taiga.sidom.gob.ar/project/vuce-sidom-dai/us/${detail.taiga_id}`;
+            window.open(taigaUrl, '_blank');
+        };
+
+        // Task editing functions
+        window.enableTaskEditMode = function(taskId) {
+            console.log('enableTaskEditMode called with:', taskId);
+            console.log('currentTask:', currentTask);
+
+            // Use the global currentTask from openTaskModal
+            if (!currentTask) {
+                console.error('currentTask not found');
+                return;
+            }
+
+            currentEditingTask = {
+                id: currentTask.id,
+                taiga_id: currentTask.taiga_id || currentTask.id,
+                description: currentTask.description || '',
+                version: currentTask.version || 1
+            };
+
+            console.log('currentEditingTask:', currentEditingTask);
+
+            const modal = document.getElementById('task-modal');
+            const modalBody = modal.querySelector('.modal-body');
+
+            // Hide view tabs (buscar específicamente la sección de vista)
+            const viewSection = document.getElementById('task-view-section');
+            if (viewSection) {
+                viewSection.style.display = 'none';
+                console.log('Task view section hidden');
+            } else {
+                console.warn('Task view section not found, trying fallback selector');
+                const fallbackViewSection = modal.querySelector('.modal-section:not(#task-edit-section)');
+                if (fallbackViewSection) {
+                    fallbackViewSection.style.display = 'none';
+                }
+            }
+
+            // Remove any existing edit section
+            const existingEditSection = document.getElementById('task-edit-section');
+            if (existingEditSection) {
+                existingEditSection.remove();
+                console.log('Removed existing task edit section');
+            }
+
+            // Create edit section
+            const editSection = document.createElement('div');
+            editSection.className = 'modal-section';
+            editSection.id = 'task-edit-section';
+
+            // Get HTML description for HTML tab
+            const taskHtmlDescription = (currentTask?.description_html || '').trim() || '<em>Sin HTML disponible</em>';
+
+            editSection.innerHTML = `
+                <div style="margin-bottom: 15px; display: flex; gap: 10px; justify-content: space-between; align-items: center; padding: 10px; background: #f8f9fa; border-radius: 6px;">
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn-secondary" onclick="saveTaskToDraft()" style="background: #6c757d; color: white;">💾 Guardar en Draft</button>
+                        <button class="btn-primary" onclick="saveTaskToTaiga()" style="background: #667eea; color: white;">🚀 Enviar a Taiga</button>
+                    </div>
+                    <button class="btn-secondary" onclick="cancelTaskEdit()" style="background: #dc3545; color: white;">✕ Cancelar</button>
+                </div>
+                <div class="modal-tabs" style="display: flex; gap: 5px; margin-bottom: 15px; border-bottom: 2px solid #dee2e6;">
+                    <button type="button" class="modal-tab active" data-task-edit-tab="source" style="padding: 10px 20px; border: none; background: transparent; cursor: pointer; border-bottom: 3px solid #667eea; font-weight: 600;">Source</button>
+                    <button type="button" class="modal-tab" data-task-edit-tab="preview" style="padding: 10px 20px; border: none; background: transparent; cursor: pointer; border-bottom: 3px solid transparent;">Vista Previa</button>
+                    <button type="button" class="modal-tab" data-task-edit-tab="html" style="padding: 10px 20px; border: none; background: transparent; cursor: pointer; border-bottom: 3px solid transparent;">HTML</button>
+                </div>
+                <div class="modal-tab-panel active" data-task-edit-panel="source" style="display: block;">
+                    <textarea id="task-description-editor" style="width: 100%; min-height: 400px; font-family: monospace; padding: 10px; border: 1px solid #ddd; border-radius: 4px; resize: vertical;">${currentEditingTask.description}</textarea>
+                </div>
+                <div class="description modal-tab-panel" data-task-edit-panel="preview" id="task-description-preview" style="display: none; min-height: 400px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; background: #fafafa;"></div>
+                <div class="description modal-tab-panel" data-task-edit-panel="html" id="task-description-html-view" style="display: none; min-height: 400px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; background: #fafafa;">${taskHtmlDescription}</div>
+            `;
+
+            modalBody.appendChild(editSection);
+            console.log('Task edit section appended to modal body');
+            console.log('Task edit section display:', window.getComputedStyle(editSection).display);
+
+            // Setup tab switching
+            const editTabButtons = editSection.querySelectorAll('[data-task-edit-tab]');
+            const editTabPanels = editSection.querySelectorAll('[data-task-edit-panel]');
+
+            console.log('Found task tab buttons:', editTabButtons.length);
+            console.log('Found task tab panels:', editTabPanels.length);
+
+            editTabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const targetTab = button.getAttribute('data-task-edit-tab');
+                    console.log('Task tab clicked:', targetTab);
+
+                    // Remove active state from all buttons and panels
+                    editTabButtons.forEach(btn => {
+                        btn.classList.remove('active');
+                        btn.style.borderBottom = '3px solid transparent';
+                        btn.style.fontWeight = 'normal';
+                    });
+                    editTabPanels.forEach(panel => {
+                        panel.classList.remove('active');
+                        panel.style.display = 'none';
+                    });
+
+                    // Activate selected button and panel
+                    button.classList.add('active');
+                    button.style.borderBottom = '3px solid #667eea';
+                    button.style.fontWeight = '600';
+
+                    const targetPanel = editSection.querySelector(`[data-task-edit-panel="${targetTab}"]`);
+                    if (targetPanel) {
+                        targetPanel.classList.add('active');
+                        targetPanel.style.display = 'block';
+                        console.log('Activated task panel:', targetTab);
+
+                        // Update preview if switching to preview tab
+                        if (targetTab === 'preview') {
+                            updateTaskMarkdownPreview();
+                        }
+                    }
+                });
+            });
+
+            // Live preview on input
+            const editor = document.getElementById('task-description-editor');
+            if (editor) {
+                editor.addEventListener('input', () => {
+                    if (editSection.querySelector('[data-task-edit-panel="preview"]').classList.contains('active')) {
+                        updateTaskMarkdownPreview();
+                    }
+                });
+                console.log('Task editor input listener attached');
+            } else {
+                console.error('Task editor textarea not found!');
+            }
+
+            updateTaskMarkdownPreview();
+
+            // Change modal header
+            const editBtn = modal.querySelector('.task-edit-btn');
+            if (editBtn) {
+                editBtn.style.display = 'none';
+                console.log('Task edit button hidden');
+            } else {
+                console.warn('Task edit button not found');
+            }
+
+            console.log('enableTaskEditMode completed successfully');
+        };
+
+        window.updateTaskMarkdownPreview = function() {
+            const editor = document.getElementById('task-description-editor');
+            const preview = document.getElementById('task-description-preview');
+            if (!editor || !preview) return;
+
+            const markdown = editor.value;
+            if (typeof marked !== 'undefined') {
+                preview.innerHTML = marked.parse(markdown);
+                if (typeof renderMermaidDiagrams === 'function') {
+                    renderMermaidDiagrams(preview);
+                }
+            } else {
+                preview.textContent = markdown;
+            }
+        };
+
+        window.cancelTaskEdit = function() {
+            console.log('cancelTaskEdit called');
+            const modal = document.getElementById('task-modal');
+            const editSection = document.getElementById('task-edit-section');
+            const viewSection = document.getElementById('task-view-section');
+
+            if (editSection) {
+                editSection.remove();
+                console.log('Task edit section removed');
+            }
+
+            if (viewSection) {
+                viewSection.style.display = 'block';
+                console.log('Task view section shown');
+            } else {
+                console.warn('Task view section not found, trying fallback');
+                const fallbackViewSection = modal.querySelector('.modal-section:not(#task-edit-section)');
+                if (fallbackViewSection) {
+                    fallbackViewSection.style.display = 'block';
+                }
+            }
+
+            const editBtn = modal.querySelector('.task-edit-btn');
+            if (editBtn) {
+                editBtn.style.display = 'inline-block';
+                console.log('Task edit button shown');
+            }
+
+            currentEditingTask = null;
+        };
+
+        // Save task to draft (local storage)
+        window.saveTaskToDraft = function() {
+            console.log('saveTaskToDraft called');
+            if (!currentEditingTask) {
+                console.error('No currentEditingTask');
+                alert('❌ Error: No hay tarea en edición');
+                return;
+            }
+
+            const editor = document.getElementById('task-description-editor');
+            if (!editor) {
+                console.error('Task editor not found');
+                alert('❌ Error: Editor no encontrado');
+                return;
+            }
+
+            const newDescription = editor.value;
+            console.log('New task description:', newDescription.substring(0, 100) + '...');
+
+            // Update currentTask
+            if (currentTask && currentTask.id === currentEditingTask.id) {
+                currentTask.description = newDescription;
+                if (typeof marked !== 'undefined') {
+                    currentTask.description_html = marked.parse(newDescription);
+                }
+                currentTask.modified_locally = true;
+                currentEditingTask.description = newDescription;
+            }
+
+            // Save to localStorage
+            try {
+                let taskDrafts = JSON.parse(localStorage.getItem('task_drafts') || '{}');
+                taskDrafts[currentEditingTask.id] = {
+                    description: newDescription,
+                    timestamp: new Date().toISOString(),
+                    taiga_id: currentEditingTask.taiga_id
+                };
+                localStorage.setItem('task_drafts', JSON.stringify(taskDrafts));
+                console.log('Saved to localStorage:', taskDrafts[currentEditingTask.id]);
+            } catch (e) {
+                console.error('Error saving to localStorage:', e);
+            }
+
+            // Update preview panel
+            updateTaskMarkdownPreview();
+
+            alert('💾 Descripción de tarea guardada en Draft localmente');
+            console.log('Task saved to draft successfully');
+        };
+
+        // Save task to Taiga
+        window.saveTaskToTaiga = async function() {
+            console.log('saveTaskToTaiga called');
+            console.log('currentEditingTask:', currentEditingTask);
+
+            if (!currentEditingTask) {
+                console.error('No currentEditingTask');
+                alert('❌ Error: No hay tarea en edición');
+                return;
+            }
+
+            if (!currentEditingTask.taiga_id) {
+                console.error('No taiga_id in currentEditingTask:', currentEditingTask);
+                alert('❌ Error: Esta tarea no tiene ID de Taiga.\nSolo se pueden sincronizar tareas que ya existen en Taiga.');
+                return;
+            }
+
+            const editor = document.getElementById('task-description-editor');
+            if (!editor) {
+                console.error('Task editor not found');
+                alert('❌ Error: Editor no encontrado');
+                return;
+            }
+
+            const newDescription = editor.value;
+            console.log('Sending task to Taiga:', newDescription.substring(0, 100) + '...');
+            console.log('taiga_id:', currentEditingTask.taiga_id);
+            console.log('version (local):', currentEditingTask.version);
+
+            try {
+                // First, get the current version from Taiga
+                console.log('Fetching current version from Taiga...');
+                const getCurrentResponse = await fetch(`/tasks/${currentEditingTask.taiga_id}`);
+                if (!getCurrentResponse.ok) {
+                    alert('❌ Error al obtener versión actual de Taiga');
+                    return;
+                }
+                const currentTask = await getCurrentResponse.json();
+                const currentVersion = currentTask.version;
+                console.log('version (Taiga):', currentVersion);
+
+                // Update with current version
+                const url = `/tasks/${currentEditingTask.taiga_id}?description=${encodeURIComponent(newDescription)}&version=${currentVersion}`;
+                console.log('PATCH URL:', url);
+
+                const response = await fetch(url, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    let errorMessage = 'Error desconocido';
+                    try {
+                        const error = await response.json();
+                        console.error('Error response:', error);
+
+                        // Check for version conflict
+                        if (error.detail && error.detail.version) {
+                            alert(`❌ Conflicto de versión:\n\nEl elemento fue modificado por otra persona mientras lo editabas.\n\nPor favor:\n1. Copia tu texto del editor\n2. Cierra y vuelve a abrir el modal\n3. Pega tu texto y vuelve a enviar`);
+                            return;
+                        }
+
+                        errorMessage = JSON.stringify(error.detail || error, null, 2);
+                    } catch (e) {
+                        errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+                    }
+                    alert(`❌ Error al actualizar:\n${errorMessage}`);
+                    return;
+                }
+
+                const updated = await response.json();
+                console.log('Updated task from Taiga:', updated);
+
+                // Update currentTask
+                if (currentTask && currentTask.id === currentEditingTask.id) {
+                    currentTask.description = updated.description;
+                    currentTask.description_html = updated.description_html;
+                    currentTask.version = updated.version;
+                    currentTask.modified_locally = false;
+                    currentEditingTask.description = updated.description;
+                    currentEditingTask.version = updated.version;
+                }
+
+                // Update editor and preview
+                editor.value = updated.description;
+                const htmlPanel = document.getElementById('task-description-html-view');
+                if (htmlPanel) {
+                    htmlPanel.innerHTML = updated.description_html || '<em>Sin HTML disponible</em>';
+                    // Render mermaid diagrams in HTML panel
+                    setTimeout(() => {
+                        if (window.renderMermaidDiagrams) {
+                            window.renderMermaidDiagrams(htmlPanel);
+                        }
+                    }, 100);
+                }
+                updateTaskMarkdownPreview();
+
+                // Remove draft from localStorage after successful sync
+                try {
+                    const taskDrafts = JSON.parse(localStorage.getItem('task_drafts') || '{}');
+                    delete taskDrafts[currentEditingTask.id];
+                    localStorage.setItem('task_drafts', JSON.stringify(taskDrafts));
+                    console.log('Draft removed from localStorage for task:', currentEditingTask.id);
+                } catch (e) {
+                    console.error('Error removing draft from localStorage:', e);
+                }
+
+                alert('🚀 Descripción de tarea sincronizada con Taiga correctamente');
+                console.log('Task saved to Taiga successfully');
+            } catch (error) {
+                console.error('Error saving task description:', error);
+                alert(`❌ Error: ${error.message}`);
+            }
+        };
+
+        // Open task in Taiga
+        window.openTaskInTaiga = function(taskId) {
+            if (!currentTask || !currentTask.taiga_id) {
+                alert('Esta tarea no tiene un ID de Taiga asociado');
+                return;
+            }
+            // Construct Taiga URL (assuming standard Taiga URL format)
+            const taigaUrl = `https://taiga.sidom.gob.ar/project/vuce-sidom-dai/task/${currentTask.taiga_id}`;
+            window.open(taigaUrl, '_blank');
+        };
     </script>
 </body>
 </html>

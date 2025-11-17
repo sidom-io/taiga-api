@@ -313,6 +313,36 @@ class TaigaClient:
 
         return self._json_or_error(response)
 
+    async def update_epic(
+        self,
+        epic_id: int,
+        description: Optional[str] = None,
+        version: int = 1,
+    ) -> Dict[str, Any]:
+        """Actualiza una épica."""
+        client = await self._ensure_client()
+        token = await self._get_token()
+        headers = self._build_headers(token)
+
+        payload: Dict[str, Any] = {"version": version}
+        if description is not None:
+            payload["description"] = description
+
+        try:
+            response = await client.patch(
+                f"epics/{epic_id}", json=payload, headers=headers
+            )
+        except httpx.RequestError as exc:
+            raise TaigaClientError(
+                f"No se pudo actualizar la épica {epic_id}: {exc}"
+            ) from exc
+        self._record_response(response)
+
+        if response.status_code != 200:
+            raise TaigaClientError(self._parse_error(response))
+
+        return self._json_or_error(response)
+
     async def create_user_story(
         self,
         project: Union[int, str],

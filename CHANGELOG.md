@@ -7,7 +7,138 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 
 ## [Unreleased]
 
-### Added
+### Changed
+- actualizar documentación con interfaz web interactiva y cambios recientes
+
+Cambios en README.md:
+- Reescritura completa con enfoque en funcionalidades actuales
+- Sección destacada de features implementadas vs pendientes
+- Guía completa de uso de interfaz /table-map
+- Documentación detallada del editor de 3 tabs
+- Issues pendientes documentados (gestión de épicas, tareas desde interfaz)
+- Eliminada documentación obsoleta del flujo DAI
+- Port actualizado a 8001
+- Quick start simplificado en 4 pasos
+
+Cambios en CHANGELOG.md:
+- Nueva sección 'Added - Interfaz Web Interactiva (2025-01-16)'
+- Documentación de visualización jerárquica Epic → US → Task
+- Editor markdown con persistencia de drafts y sync bidireccional
+- Control de versiones automático para prevenir conflictos
+- Sección 'Changed' con mejoras de UX y backend
+- Sección 'Fixed' con 5 fixes críticos documentados
+- Metadata de commits analizados (29 commits, 10 días)
+
+Features documentadas:
+- Interfaz web /table-map con editor markdown completo
+- 3 tabs: Source (editable), Vista Previa (tiempo real), HTML (Taiga)
+- Persistencia en localStorage con carga/limpieza automática
+- Control de versiones optimista con fetch de versión actual
+- Renderizado Mermaid + syntax highlighting
+- Gestión de tags con colores
+- 8 nuevos endpoints de API
+
+Commits analizados: 29 (período 2025-01-07 a 2025-01-16)
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+
+### Added - Interfaz Web Interactiva (2025-01-16)
+
+**🎨 Interfaz Web `/table-map` - Editor Markdown Completo**
+
+- **Visualización jerárquica completa**: Epic → User Story → Task en formato tabla interactiva
+- **Editor markdown de 3 tabs**:
+  - Tab "Source": Editor markdown editable
+  - Tab "Vista Previa": Renderizado en tiempo real del markdown
+  - Tab "HTML": HTML original de Taiga (actualizado al sincronizar)
+- **Persistencia de drafts**: Guardado automático en localStorage del navegador
+- **Sincronización bidireccional**:
+  - 💾 Guardar en Draft (localStorage)
+  - 🚀 Enviar a Taiga (sync remoto)
+- **Control de versiones automático**:
+  - Obtención de versión actual desde Taiga antes de actualizar
+  - Prevención de conflictos de concurrencia
+  - Mensajes de error claros para conflictos de versión
+- **Renderizado avanzado**:
+  - Diagramas Mermaid integrados
+  - Syntax highlighting para código
+  - Vista previa en tiempo real mientras escribes
+- **Gestión de tags**: Agregar/visualizar tags con colores en User Stories
+- **Navegación**: Botón "🚀 Taiga" para abrir elementos en Taiga web
+- **Limpieza automática**: Drafts se eliminan automáticamente después de sincronizar exitosamente
+
+**📡 Mejoras de API**
+
+- GET `/table-map?project=<id>` - Nueva interfaz web interactiva
+- Endpoint GET `/user-stories/{id}` ahora incluye `taiga_id` y `version` en respuesta
+- Endpoint GET `/tasks/{id}` incluye `taiga_id` para sincronización
+- PATCH `/user-stories/{id}` con control de versiones optimista
+- PATCH `/tasks/{id}` con control de versiones optimista
+- POST `/epics` para crear épicas (endpoint existente)
+- GET `/epics?project=<id>` con modo verbose y user stories anidadas
+- GET `/project-map` para obtener estructura jerárquica completa
+- POST `/auth/token` para cambiar token sin reiniciar servidor
+- GET `/projects/{id}/milestones` - Listado de sprints/milestones
+- GET `/projects/{id}/tags` - Tags del proyecto con colores
+
+**🔧 Mejoras Técnicas**
+
+- Serialización mejorada en `_build_story_details()`: ahora incluye `taiga_id` y `version`
+- Template HTML `table_map.html` con ~4500 líneas de código JavaScript
+- Integración de librerías:
+  - marked.js v11.1.1 para parsing de markdown
+  - mermaid.js v10 para diagramas
+  - Sortable.js para drag & drop (futuro)
+- Manejo robusto de errores con mensajes user-friendly
+- Logs detallados en consola para debugging
+
+**📚 Documentación Actualizada (2025-01-16)**
+
+- README.md completamente reescrito:
+  - Sección destacada de funcionalidades implementadas vs pendientes
+  - Guía completa de uso de la interfaz `/table-map`
+  - Documentación de los 3 tabs del editor
+  - Ejemplos de uso típico paso a paso
+  - Eliminada documentación obsoleta del flujo DAI
+  - Port actualizado a 8001
+- Issues pendientes documentados:
+  - Gestión de épicas desde interfaz
+  - Creación/modificación de tareas desde interfaz
+  - Sincronización avanzada de épicas completas
+  - Mejoras de interfaz (drag & drop, filtros)
+
+### Changed
+
+- **Backend**: `_serialize()` en `main.py` ahora incluye `taiga_id` y `version` para User Stories y Tasks
+- **Frontend**: Editor visible por defecto (sin botón "Editar")
+- **Frontend**: Tab "Vista Previa" activa por defecto (mejor UX)
+- **Frontend**: Colores de tabs mejorados para mejor visibilidad
+  - Tab activo: fondo blanco, borde azul (#3b82f6)
+  - Tab inactivo: fondo gris (#f3f4f6), texto gris (#6b7280)
+- **Frontend**: Botones de acción con colores distintivos
+  - 💾 Draft: amarillo (#fbbf24)
+  - 🚀 Taiga: verde (#10b981)
+- **API**: Control de versiones ahora obtiene versión actual de Taiga antes de actualizar
+
+### Fixed
+
+- **Fix crítico**: Conflictos de versión en actualización de User Stories y Tasks
+  - Ahora se obtiene la versión actual desde Taiga antes de PATCH
+  - Previene error 400 "version doesn't match"
+- **Fix**: Editor de textarea ahora es editable correctamente
+  - Eliminado `cloneNode()` que causaba pérdida de propiedades
+  - Uso de flag `dataset.listenerAttached` para prevenir listeners duplicados
+- **Fix**: Panel HTML se actualiza correctamente después de sincronizar con Taiga
+  - Incluye renderizado de diagramas Mermaid en HTML
+- **Fix**: Drafts persisten correctamente en localStorage
+  - Carga automática al abrir modal
+  - Limpieza automática después de sync exitoso
+- **Fix**: Mensajes de error más claros para conflictos de versión
+  - Instrucciones paso a paso para resolver el conflicto
+
+### Added - Features Previos
 - agregar endpoints para crear y actualizar historias de usuario
 - agregar endpoint para listar proyectos
 - agregar sistema de análisis de cambios con LLM
@@ -189,4 +320,8 @@ Endpoints nuevos:
 
 ---
 
-**Nota**: Este changelog se actualiza automáticamente mediante hooks de pre-commit.
+**Última actualización manual**: 2025-01-16 - Consolidación de cambios de interfaz web interactiva
+
+**Commits analizados**: 29 commits de los últimos 10 días (2025-01-07 a 2025-01-16)
+
+**Nota**: Este changelog se actualiza automáticamente mediante hooks de pre-commit para cambios menores. Las actualizaciones mayores se documentan manualmente.

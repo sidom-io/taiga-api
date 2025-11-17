@@ -6,7 +6,7 @@ based on DAI architecture (modules D3-D8).
 """
 
 from typing import Dict, List, Optional
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 
 # DAI Architecture Epic Definitions (granular epics from architecture docs)
 MODULE_DEFINITIONS = {
@@ -98,6 +98,8 @@ class ProposedChange:
     proposed_tags: List[str]
     confidence: float  # 0.0 to 1.0
     reason: str
+    version: Optional[int] = None
+    milestone_name: Optional[str] = None
 
 
 class AIReorganizer:
@@ -267,7 +269,9 @@ class AIReorganizer:
                         proposed_epic=proposed_module,
                         proposed_tags=proposed_tags,
                         confidence=confidence,
-                        reason=f"Detectado contenido relacionado con {self.modules[proposed_module]['name']}"
+                        reason=f"Detectado contenido relacionado con {self.modules[proposed_module]['name']}",
+                        version=getattr(us, "version", None),
+                        milestone_name=getattr(us, "milestone_name", None)
                     ))
 
         # Analyze orphan user stories
@@ -291,7 +295,9 @@ class AIReorganizer:
                 proposed_epic=proposed_module,
                 proposed_tags=proposed_tags,
                 confidence=confidence,
-                reason=f"US huérfana - asignar a {self.modules[proposed_module]['name']}"
+                reason=f"US huérfana - asignar a {self.modules[proposed_module]['name']}",
+                version=getattr(us, "version", None),
+                milestone_name=getattr(us, "milestone_name", None)
             ))
 
         # Calculate average confidence
@@ -299,7 +305,7 @@ class AIReorganizer:
             statistics["confidence_avg"] = sum(p.confidence for p in proposals) / len(proposals)
 
         return {
-            "proposals": proposals,
+            "proposals": [asdict(proposal) for proposal in proposals],
             "statistics": statistics,
             "modules": self.modules
         }

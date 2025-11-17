@@ -1,22 +1,69 @@
 # Taiga FastAPI UV
 
-Servicio FastAPI asíncrono que se autentica contra Taiga y permite crear tareas mediante un endpoint REST.
+Servicio FastAPI asíncrono para gestión completa de proyectos Taiga con interfaz web interactiva para visualización y edición de User Stories y Tasks.
 
-## Contexto del Proyecto
+## 🎯 Características Principales
+
+### ✅ Funcionalidades Implementadas
+
+- **Autenticación flexible**: Soporta tokens de API, tokens de sesión del navegador y credenciales usuario/contraseña
+- **API REST completa**: CRUD de proyectos, épicas, user stories y tareas
+- **Interfaz web interactiva** (`/table-map`):
+  - Visualización jerárquica: Epic → User Story → Task
+  - Editor markdown integrado con vista previa en tiempo real
+  - Sincronización bidireccional con Taiga
+  - Persistencia de drafts en localStorage
+  - Gestión de tags visuales
+  - Renderizado de diagramas Mermaid
+- **Integración MCP**: Herramientas nativas para Claude Code
+- **Sistema de sincronización**: Sync completo de proyectos desde Taiga a SQLite local
+- **Control de versiones**: Manejo automático de versiones para evitar conflictos de concurrencia
+- **Creación masiva**: Importación de tareas desde markdown
+
+### 🚧 Funcionalidades Pendientes
+
+> **Importante**: Las siguientes funcionalidades están identificadas como necesarias para completar el flujo de trabajo:
+
+1. **Gestión de Épicas**
+   - [ ] Crear épicas desde la interfaz web
+   - [ ] Eliminar épicas
+   - [ ] Sincronizar épica completa a Taiga (crear si no existe, validar nombre único)
+
+2. **Gestión de Tareas desde Interfaz Web**
+   - [ ] Crear nuevas tareas desde el modal de User Story
+   - [ ] Modificar tareas existentes (título, descripción, estado)
+   - [ ] Eliminar tareas
+
+3. **Sincronización Avanzada**
+   - [ ] Migrar épica completa a Taiga con un solo botón
+   - [ ] Asignar automáticamente User Stories a la épica migrada
+   - [ ] Validación de nombres únicos antes de crear épicas
+
+4. **Mejoras de Interfaz**
+   - [ ] Drag & drop para reorganizar User Stories y Tasks
+   - [ ] Filtros y búsqueda en la vista de tabla
+   - [ ] Edición inline de títulos
+
+## 📋 Índice
+
+- [Contexto del Proyecto](#contexto-del-proyecto)
+- [Quick Start](#quick-start)
+- [Configuración](#configuración)
+- [Uso de la Interfaz Web](#uso-de-la-interfaz-web)
+- [API Endpoints](#api-endpoints)
+- [Integración MCP](#integración-mcp)
+- [Desarrollo](#desarrollo)
+- [Recursos Adicionales](#recursos-adicionales)
+
+## 🏗️ Contexto del Proyecto
 
 Este servicio es parte del proyecto **VUCE-SIDOM DAI** (Declaración Aduanera Informatizada), un sistema de digitalización de procesos aduaneros para Argentina bajo el préstamo BID 3869/OC-AR.
 
-### Arquitectura del Sistema
-
-![alt text](image.png)
-
-![alt text](image-1.png)
-
-### Módulos del Sistema
+### Módulos del Sistema VUCE-SIDOM
 
 - **D3 (Seguridad)**: Usuarios, autenticación vía Clave Fiscal ARCA, delegaciones CF4, roles y permisos
-- **D4 (DAI)**: Operaciones IMEX - Creación y gestión de declaraciones aduaneras (módulo actual)
-- **D5 (Catálogo)**: Mercaderías, NCM (Nomenclatura Común del Mercosur), productos y atributos. Gestiona posiciones arancelarias y campos dinámicos por subrégimen
+- **D4 (DAI)**: Operaciones IMEX - Creación y gestión de declaraciones aduaneras
+- **D5 (Catálogo)**: Mercaderías, NCM (Nomenclatura Común del Mercosur), productos y atributos
 - **D6 (Búsqueda)**: Índices, consultas guardadas y reportes
 - **D7-D8 (Documentos)**: LPCO, sobres digitales, adjuntos y firma digital
 
@@ -27,254 +74,84 @@ Este servicio es parte del proyecto **VUCE-SIDOM DAI** (Declaración Aduanera In
 - **TAD (ARCA)**: Sistema tributario y de autenticación
 - **ARCA AFIP**: Autenticación vía Clave Fiscal
 
-### Conceptos Clave
+Para más detalles sobre la arquitectura completa, ver [`util/vuce-sidom-architecture.md`](util/vuce-sidom-architecture.md).
 
-- **CF4**: CUIT de la empresa que el usuario está representando (no su propio CUIT)
-- **Delegación**: Permiso que tiene un usuario para operar en nombre de una empresa (CF4)
-- **Delegación Activa**: CF4 seleccionado actualmente por el usuario en su sesión
+## 🚀 Quick Start
 
-### ⚠️ Información Pendiente (Bloqueantes)
-
-Estos puntos requieren definición con VUCE/DGA para completar la implementación:
-
-1. **Acceso a datos del KIT Maria**: Protocolo de comunicación, endpoints y formato de datos
-2. Catálogo completo de tipos de eventos para notificaciones
-3. Diagrama de transición entre estados de operaciones
-4. Matriz completa de permisos por rol
-5. Política de retención de notificaciones históricas
-
-## Índice
-
-- [Contexto del Proyecto](#contexto-del-proyecto)
-- [Flujo de Operaciones DAI](#flujo-de-operaciones-dai)
-- [Integración MCP con Claude Code](#integración-mcp-con-claude-code)
-- [Requisitos previos](#requisitos-previos)
-- [Configuración](#configuración)
-- [Solución de Problemas de Autenticación](#solución-de-problemas-de-autenticación)
-- [Instalación y Ejecución](#instalación-de-dependencias)
-- [Endpoints Disponibles](#endpoint-disponible)
-- [Recursos Adicionales](#recursos-adicionales)
-
-## Flujo de Operaciones DAI
-
-El módulo D4 implementa el flujo completo de declaraciones aduaneras:
-
-### 1. Dashboard y Navegación
-- Visualización de operaciones agrupadas por estado
-- Notificaciones personales y operacionales (por CF4)
-- Menú dinámico según permisos del usuario
-- Cambio de CF4 con actualización automática del contexto
-
-### 2. Creación de Operaciones
-- **Manual**: Formulario paso a paso
-- **Masiva**: Carga mediante archivo CSV
-
-### 3. Carga de Información
-1. **Pre-carátula**: Datos iniciales de la operación
-2. **Carátula**: Información completa (varía según subrégimen)
-3. **Ítems**: Mercaderías con posiciones arancelarias NCM (del catálogo D5)
-4. **Subítems**: Detalle de cada mercadería (cantidad, valor FOB, peso neto)
-5. **Documentación**: Adjuntos y referencias
-
-**Nota**: Los ítems y subítems utilizan el catálogo D5 para validar posiciones arancelarias NCM y obtener campos dinámicos según el subrégimen.
-
-### 4. Validaciones
-- Validaciones interactivas con KIT Malvina
-- Preguntas dinámicas según tipo de operación
-- Verificación de datos arancelarios
-
-### 5. Oficialización
-1. Liquidación de tributos
-2. Generación de VEP (Volante Electrónico de Pago)
-3. Oficialización final
-
-### Estados de Operación
-
-```
-Borrador → En Carga → Validando → Observada → Lista → Oficializada → Pagada
-                          ↓
-                      Rechazada
-```
-
-### Notificaciones por Origen
-
-- 🔵 **KIT Malvina**: Validaciones y cálculos arancelarios
-- 🟢 **DAI Interno**: Eventos del sistema
-- 🟠 **VUCE Central**: Coordinación interorganismos
-
-## Integración MCP con Claude Code
-
-Este proyecto incluye integración nativa con **Model Context Protocol (MCP)**, permitiendo que Claude Code acceda directamente a todas las funcionalidades de la API de Taiga como herramientas nativas.
-
-### ¿Qué es MCP?
-
-MCP es un protocolo abierto que permite a Claude Code conectarse con herramientas externas. Una vez configurado, Claude puede:
-
-- Crear y gestionar tareas en Taiga automáticamente
-- Consultar proyectos, user stories y estados
-- Crear múltiples tareas desde markdown
-- Gestionar el flujo completo de trabajo en Taiga
-
-### Quick Start
-
-1. **Inicia el servidor MCP**:
-```bash
-uv run python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
-```
-
-2. **Configura Claude Code**:
-```bash
-claude mcp add --transport http taiga-local http://localhost:8000/mcp
-```
-
-3. **Usa Claude normalmente** - detectará automáticamente cuándo necesita interactuar con Taiga
-
-**Documentación completa**: Ver [util/MCP_SETUP.md](util/MCP_SETUP.md) para configuración detallada, deployment en producción y troubleshooting.
-
-## Relaciones entre Módulos
-
-```
-D3 (Seguridad)
-  ↓ posee
-D4 (Declaraciones) ← crea/modifica ← D3
-  ↓ referencia
-D5 (Catálogo) → indexa → D6 (Búsqueda)
-  ↓ consulta                    ↓
-D4 ← consulta ← D6              ↓
-  ↓ genera                      ↓
-D7-D8 (Documentos) ← almacena ← D6
-```
-
-### Dependencias Clave
-
-- **D4 depende de D3**: Autenticación, permisos y delegaciones CF4
-- **D4 depende de D5**: Catálogo de mercaderías y NCM para validar posiciones arancelarias y obtener campos dinámicos
-- **D4 depende de KIT Malvina**: Validaciones y cálculo de tributos (⚠️ bloqueante)
-- **D4 integra con VUCE Central**: Notificaciones interorganismos
-- **D6 indexa D4 y D5**: Búsquedas y reportes
-- **D7-D8 almacena documentos de D4**: LPCO, adjuntos, firmas
-
-## Requisitos previos
+### Requisitos Previos
 
 - Python 3.11 o superior
 - [uv](https://github.com/astral-sh/uv) instalado globalmente
 
-## Configuración
-
-1. Copia `.env.example` a `.env`:
-   ```bash
-   cp .env.example .env
-   ```
-
-2. **Configura la autenticación** (elige una opción):
-
-### Opción 1: Token de API o Sesión (Recomendado)
-
-#### Método A: Token de API desde la Interfaz Web
-
-1. Ve a tu instancia de Taiga: https://tu-instancia-taiga.com
-2. Inicia sesión con tu usuario y contraseña
-3. Ve a tu perfil (click en tu avatar)
-4. Ve a "Settings" o "Configuración"
-5. Busca la sección "API" o "Application Tokens"
-6. Genera un nuevo token de aplicación
-7. Agrega el token al archivo `.env`:
+### Instalación Rápida
 
 ```bash
+# 1. Clonar el repositorio
+cd /path/to/taiga-fastapi-uv
+
+# 2. Configurar entorno completo
+./scripts/setup-dev.sh
+
+# 3. Configurar autenticación
+cp .env.example .env
+# Edita .env y agrega tu TAIGA_AUTH_TOKEN o credenciales
+
+# 4. Iniciar servidor
+uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8001
+```
+
+**Acceder a la aplicación:**
+- API Docs: http://localhost:8001/docs
+- Interfaz Web: http://localhost:8001/table-map?project=vuce-sidom-dai
+
+## ⚙️ Configuración
+
+### Autenticación con Taiga
+
+Edita el archivo `.env` y elige una de estas opciones:
+
+#### Opción 1: Token de API (Recomendado)
+
+```bash
+TAIGA_BASE_URL=https://tu-instancia-taiga.com/
 TAIGA_AUTH_TOKEN=tu_token_de_api_aqui
 ```
 
-> ** Importante**: Si no encuentras la opción "API" o "Application Tokens" en tu perfil, consulta con tu administrador de Taiga. Esta funcionalidad puede estar deshabilitada en tu instancia.
+**Cómo obtener el token de API:**
+1. Ve a tu instancia de Taiga
+2. Inicia sesión
+3. Ve a tu perfil → Settings → Application Tokens
+4. Genera un nuevo token
 
-#### Método B: Token de Sesión del Navegador (Alternativo)
+#### Opción 2: Token de Sesión del Navegador
 
-Si no tienes acceso a tokens de API en la interfaz web, puedes extraer el token de sesión desde las herramientas de desarrollador del navegador.
+Si no tienes acceso a tokens de API:
 
-Sigue las instrucciones detalladas en la sección "Solución de Problemas de Autenticación" más abajo para obtener el token.
-
-Una vez que tengas el token, agrégalo al archivo `.env`:
+1. Abre DevTools en tu navegador (F12)
+2. Ve a la pestaña Network
+3. Recarga Taiga
+4. Busca un request a `/api/v1/`
+5. En Headers, copia el valor de `Authorization: Bearer ...`
+6. Agrega el token (solo la parte después de "Bearer ") al `.env`:
 
 ```bash
-TAIGA_AUTH_TOKEN=tu_token_de_sesion_aqui
+TAIGA_AUTH_TOKEN=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...
 ```
 
-### Opción 2: Usuario y Contraseña
-
-Si no puedes obtener un token de sesión:
+#### Opción 3: Usuario y Contraseña
 
 ```bash
 TAIGA_USERNAME=tu_usuario
 TAIGA_PASSWORD=tu_contraseña
 ```
 
-## Solución de Problemas de Autenticación
-
-### Problema Común: Credenciales no funcionan para la API
-
-Si ves el error `"No active account found with the given credentials"`, significa que aunque puedas acceder a la interfaz web de Taiga, las credenciales de usuario/contraseña no funcionan para la API.
-
-### Solución: Obtener Token de Autenticación
-
-**Primero intenta el Método A** (Token de API desde la interfaz web). Si no tienes esa opción disponible, usa el **Método B** (Token de sesión del navegador).
-
-#### Método B: Extraer Token de Sesión del Navegador
-
-Sigue estos pasos para obtener un token válido:
-
-#### 1. Abre las Herramientas de Desarrollador
-
-- En Chrome/Edge: Presiona `F12` o `Ctrl+Shift+I`
-- En Firefox: Presiona `F12` o `Ctrl+Shift+I`
-
-#### 2. Configura la Captura de Red
-
-1. Ve a la pestaña **"Network"** (Red)
-2. Asegúrate de que esté grabando (botón rojo activo)
-3. Filtra por **"XHR"** o **"Fetch"**
-
-#### 3. Genera Tráfico de Red
-
-- Recarga la página de Taiga (`F5`)
-- O navega a cualquier sección del proyecto
-
-#### 4. Encuentra el Token
-
-1. Busca requests que vayan a `/api/v1/`
-2. Click en cualquier request de la API
-3. Ve a la pestaña **"Headers"** (Cabeceras)
-4. En **"Request Headers"** busca:
-   ```
-   Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...
-   ```
-
-#### 5. Copia y Configura el Token
-
-1. **Copia solo el token** (la parte después de "Bearer ")
-2. **Agrega el token al `.env`**:
-   ```bash
-   TAIGA_AUTH_TOKEN=tu_token_copiado_aqui
-   ```
-3. **Comenta las credenciales de usuario**:
-   ```bash
-   # TAIGA_USERNAME=tu_usuario
-   # TAIGA_PASSWORD=tu_contraseña
-   ```
-
-![Ejemplo de interfaz de Taiga](util/taiga_token_example.jpg)
-
-*La imagen muestra la interfaz de Taiga donde puedes acceder a las herramientas de desarrollador para extraer el token de autenticación*
-
-#### 6. Verifica que Funciona
+### Verificar Autenticación
 
 ```bash
-# Inicia el servidor
-uv run uvicorn app.main:app --reload
-
-# En otra terminal, prueba la autenticación
-curl -X POST "http://localhost:8000/debug/auth"
+curl -X POST "http://localhost:8001/debug/auth"
 ```
 
-Deberías ver:
+Respuesta esperada:
 ```json
 {
   "ok": true,
@@ -284,536 +161,373 @@ Deberías ver:
 }
 ```
 
-### Comandos de Diagnóstico
+Para más detalles sobre troubleshooting de autenticación, ver la sección completa en el README original.
 
-Si sigues teniendo problemas:
+## 🖥️ Uso de la Interfaz Web
 
-1. **Ejecuta el diagnóstico de autenticación**:
-   ```bash
-   curl -X POST "http://localhost:8000/debug/auth"
+### Acceso
+
+```
+http://localhost:8001/table-map?project=<project_slug_o_id>
+```
+
+### Funcionalidades de la Interfaz
+
+#### 1. Visualización Jerárquica
+
+La interfaz muestra la estructura completa del proyecto:
+
+```
+📚 Epic 1
+  ├─ 📖 User Story #1
+  │   ├─ ✅ Task 1.1
+  │   └─ ✅ Task 1.2
+  └─ 📖 User Story #2
+      └─ ✅ Task 2.1
+
+📚 Epic 2
+  └─ 📖 User Story #3
+```
+
+#### 2. Editor de User Stories y Tasks
+
+**Abrir editor:**
+- Click en cualquier User Story o Task
+
+**Tabs disponibles:**
+- **Source**: Editor markdown (editable)
+- **Vista Previa**: Renderizado en tiempo real del markdown
+- **HTML**: HTML original de Taiga (actualizado al sincronizar)
+
+**Acciones:**
+- **💾 Guardar en Draft**: Persiste cambios en localStorage del navegador
+- **🚀 Enviar a Taiga**: Sincroniza con Taiga y actualiza todos los tabs
+- **🚀 Taiga** (botón superior): Abre el elemento en Taiga web
+
+**Características:**
+- ✅ Persistencia automática de drafts
+- ✅ Carga automática de drafts al abrir modal
+- ✅ Renderizado de diagramas Mermaid
+- ✅ Vista previa en tiempo real
+- ✅ Control de versiones automático (evita conflictos de concurrencia)
+- ✅ Limpieza automática de drafts después de sincronizar
+
+#### 3. Gestión de Tags
+
+- Visualización de tags con colores
+- Agregar tags existentes a User Stories
+- Los tags se sincronizan automáticamente con Taiga
+
+#### 4. Estados y Metadatos
+
+- Indicadores visuales de estados (Borrador, En Progreso, Completado, etc.)
+- Referencias (#42, #43) para navegación rápida
+- IDs internos para debugging
+
+### Ejemplo de Uso Típico
+
+1. **Abrir proyecto**:
+   ```
+   http://localhost:8001/table-map?project=vuce-sidom-dai
    ```
 
-2. **Verifica el estado del cliente**:
-   ```bash
-   curl -X GET "http://localhost:8000/debug/state"
-   ```
+2. **Editar una User Story**:
+   - Click en el título de la User Story
+   - Edita en el tab "Source"
+   - Ve el preview en tiempo real en "Vista Previa"
+   - Click en "💾 Guardar en Draft" (opcional, guarda local)
+   - Click en "🚀 Enviar a Taiga" (sincroniza con servidor)
 
-3. **Prueba la conexión**:
-   ```bash
-   curl -X GET "http://localhost:8000/debug/connection"
-   ```
+3. **Revisar cambios en Taiga**:
+   - Click en "🚀 Taiga" (botón verde arriba a la derecha)
+   - Se abre Taiga en nueva pestaña mostrando el elemento actualizado
 
-### Errores Comunes y Soluciones
+## 📡 API Endpoints
 
-| Error | Causa | Solución |
-|-------|-------|----------|
-| `"No active account found with the given credentials"` | Las credenciales de usuario/contraseña no funcionan para la API | Usa token de API (Método A) o token de sesión del navegador (Método B) |
-| `"invalid_credentials"` | Usuario o contraseña incorrectos | Verifica que puedas iniciar sesión en la interfaz web |
-| `"Se requiere autenticación"` | Token inválido o expirado | Obtén un nuevo token del navegador |
-| `Error 404 en API` | URL base incorrecta | Asegúrate de que `TAIGA_BASE_URL` termine con `/` |
-| `Connection refused` | Servidor no iniciado | Ejecuta `uv run uvicorn app.main:app --reload` |
-| `Module not found` | Dependencias no instaladas | Ejecuta `uv sync` |
-
-## Flujo de Trabajo de Desarrollo
-
-### Opción 1: Script con uv (Recomendado)
-
-#### Desarrollo Local (commits rápidos)
+### Gestión de Proyectos
 
 ```bash
-# Commit local rápido durante desarrollo
-./scripts/update.sh --local "feat(auth): agregar validación"
+# Listar proyectos
+GET /projects
 
-# Ejecuta automáticamente:
-# ✓ git add .
-# ✓ Validaciones con uv (formateo, linting, tests)
-# ✓ git commit con actualización de CHANGELOG.md
+# Obtener detalle de proyecto
+GET /projects/{project_id}
+
+# Obtener estados, milestones, tags
+GET /projects/{project_id}/task-statuses
+GET /projects/{project_id}/userstory-statuses
+GET /projects/{project_id}/milestones
+GET /projects/{project_id}/tags
 ```
 
-#### Push Remoto (con análisis)
+### Gestión de Épicas
 
 ```bash
-# Análisis completo antes de push
-./scripts/update.sh --remote
+# Listar épicas de un proyecto
+GET /epics?project=<id_o_slug>
 
-# El script:
-# 1. Muestra diff de código
-# 2. Muestra changelog temporal
-# 3. Muestra commits locales
-# 4. Opción para generar resumen con LLM
-# 5. Commit formal + push
+# Obtener detalle de épica con user stories y tareas
+GET /epics/{epic_id}?verbose=true&include_user_stories=true&include_tasks=true
 
-# Ideal para:
-# - Antes de hacer push
-# - Generar resumen profesional con LLM
-# - Commits formales para el equipo
+# Obtener mapa completo del proyecto (Epics → US → Tasks)
+GET /project-map?project=<id>&include_tasks=true
 ```
 
-### Opción 2: Comandos Git Nativos
+### Gestión de User Stories
 
 ```bash
-# 1. Hacer cambios en el código
-# 2. Agregar archivos
-git add .
+# Listar user stories
+GET /user-stories?project=<id>&epic=<epic_id>
 
-# 3. Commit (todo se valida automáticamente)
-git commit -m "feat(scope): descripción del cambio"
+# Obtener detalle
+GET /user-stories/{user_story_id}?include_tasks=true
 
-# Los hooks de git ejecutan automáticamente:
-# ✓ Formateo de código (black, isort)
-# ✓ Linting (flake8, pylint)
-# ✓ Validación de secretos
-# ✓ Tests (en main)
-# ✓ Actualización de CHANGELOG.md
+# Crear user story
+POST /user-stories
+{
+  "project": "project-slug",
+  "subject": "Título de la historia",
+  "description": "# Descripción en markdown",
+  "tags": ["backend", "api"]
+}
+
+# Actualizar user story
+PATCH /user-stories/{user_story_id}?description=...&version=<version>
+
+# Listar tareas de una user story
+GET /user-stories/{user_story_id}/tasks
 ```
 
-### Formato de Commits
-
-Usa [Conventional Commits](https://www.conventionalcommits.org/):
+### Gestión de Tareas
 
 ```bash
-feat(auth): agregar soporte para tokens de sesión
-fix(client): corregir timeout de conexión
-docs: actualizar guía de instalación
-test: agregar tests para autenticación
+# Listar tareas
+GET /tasks?project=<id>&user_story=<id>&status=<id>
+
+# Obtener detalle
+GET /tasks/{task_id}
+
+# Crear tarea
+POST /tasks
+{
+  "project": "project-slug",
+  "subject": "Título de la tarea",
+  "user_story": 42,
+  "description": "Descripción opcional"
+}
+
+# Actualizar tarea
+PATCH /tasks/{task_id}?description=...&version=<version>
+
+# Crear tareas masivamente desde markdown
+POST /tasks/bulk/from-markdown
+{
+  "project": "project-slug",
+  "user_story": 42,
+  "markdown_content": "# Lista de tareas\n- Tarea 1\n- Tarea 2"
+}
 ```
 
-**Tipos válidos:** `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`, `perf`, `ci`, `build`
-
-### Validaciones Automáticas
-
-Los hooks de Git se ejecutan automáticamente en cada commit:
-
-- **Pre-commit**: Formato, linting, validación de secretos
-- **Prepare-commit-msg**: Actualización automática de CHANGELOG.md
-- **Commit-msg**: Validación de formato Conventional Commits
-- **Pre-push**: Tests obligatorios antes de push a `main`
-
-### Omitir Tests en Desarrollo
-
-En ramas de desarrollo (no `main`):
+### Sincronización
 
 ```bash
-# Omitir tests en este commit
-SKIP_TESTS=1 git commit -m "feat: trabajo en progreso"
+# Sincronizar todos los proyectos desde Taiga
+POST /sync/projects
+
+# Sincronizar un proyecto específico
+POST /sync/projects/{project_id}
 ```
 
-**Nota:** Los tests son siempre obligatorios en `main`
-
-### Comandos Útiles (Opcional)
-
-El proyecto incluye un Makefile con comandos convenientes:
+### Autenticación Dinámica
 
 ```bash
-make dev          # Iniciar servidor
-make test         # Ejecutar tests
-make lint         # Linting
-make format       # Formatear código
-make ci           # Validación completa (simula CI)
+# Establecer bearer token sin reiniciar
+POST /auth/token
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+
+# Verificar conexión y usuario autenticado
+GET /debug/connection
+
+# Estado del cliente
+GET /debug/state
+
+# Limpiar cache de autenticación
+POST /debug/cache/clear
 ```
 
-### Reglas de Desarrollo
-
-**Reglas automáticas (aplicadas por hooks):**
-- ✅ Formato de código consistente (black, isort)
-- ✅ Código sin errores de linting (flake8, pylint)
-- ✅ Sin secretos o datos personales en commits
-- ✅ Formato Conventional Commits obligatorio
-- ✅ CHANGELOG.md actualizado automáticamente
-- ✅ Tests obligatorios en `main`
-
-**Flexibilidad en desarrollo:**
-- En ramas feature/develop: Tests opcionales con `SKIP_TESTS=1`
-- En `main`: Tests siempre obligatorios
-- Changelog se actualiza automáticamente en cada commit
-
-## Recursos Adicionales
-
-### Documentación del Proyecto VUCE-SIDOM
-
-- **`util/vuce-sidom-architecture.md`**: Arquitectura completa del sistema, módulos y stack tecnológico
-- **`util/kit-maria-integration.md`**: Integración con KIT Malvina/Maria (⚠️ bloqueante crítico)
-- **`util/system-overview.md`**: Visión general del sistema integrado
-
-### Documentación de Desarrollo
-
-- **Carpeta `util/`**: Contiene capturas de pantalla y guías adicionales para la configuración
-- **Guía de desarrollo**: Ver `util/DEVELOPMENT.md` para documentación detallada de desarrollo
-- **Herramientas de diagnóstico**: Usa los endpoints `/debug/*` para troubleshooting
-- **Documentación de API**: Disponible en `http://localhost:8000/docs` cuando el servidor esté ejecutándose
-- **Soporte de administrador**: Si no encuentras opciones de API en tu perfil, contacta al administrador de tu instancia de Taiga
-
-### Para Desarrolladores y Modelos de IA
-
-- **Archivo `.llms`**: Punto de entrada y reglas para modelos de IA
-- **Contrato LLM-Humano**: Los LLMs crean documentación en `util/`, los humanos mantienen README.md
-- **CHANGELOG.md**: Registro automático de cambios del proyecto
-- **Guías de commits**: Ver `util/commit-guidelines.md` para formato de commits
-
-### Documentación de Módulos
-
-- **`util/d5-catalogo-documentacion.md`**: Documentación completa del módulo D5 (Catálogo)
-  - Modelo de datos: NCM, ITEM, SUBITEM, CATALOGO_CAMPO
-  - Diagramas ER en Mermaid
-  - Relaciones entre entidades y reglas de negocio
-  - Casos de uso y validaciones principales
-
-### Documentación Privada (Google Drive SIDOM - cache local)
-
-- **`util/llm-docs-proyect/`**: Documentación privada del autor (no commiteable)
-  - **README.md**: Estado actualizado del proyecto y métricas completas (16 HU, 102 tareas)
-  - **Historias de Usuario D4**: Desgloses técnicos completos por HU
-  - **TASKs D3**: Ejemplo de desglose técnico
-  - **Diagramas DrawIO**:
-    - `graficos.drawio.xml` (597K) - Flujos, estados, épicas
-    - `VUCE-Modelo de datos.drawio.xml` (512K) - DER completo
-  - **Datos JSON de Taiga**: Snapshots de HU y tareas
-  - **Archivos bulk**: Para carga masiva en Taiga
-
-## Instalación y Configuración
-
-### Instalación Rápida (Recomendado)
+### Interfaz Web
 
 ```bash
-# Configurar entorno completo (dependencias + hooks + validaciones)
-./scripts/setup-dev.sh
+# Visualizar proyecto completo con editor interactivo
+GET /table-map?project=<slug_o_id>
 ```
 
-Este script instala:
-- Dependencias de desarrollo
-- Hooks de pre-commit automáticos
-- Validaciones de código
-- Sistema de changelog automático
+Para ejemplos completos y parámetros detallados, ver la documentación interactiva en http://localhost:8001/docs
 
-### Instalación Manual
+## 🔌 Integración MCP
+
+Este proyecto incluye integración nativa con **Model Context Protocol (MCP)**, permitiendo que Claude Code acceda directamente a todas las funcionalidades de la API de Taiga como herramientas nativas.
+
+### Quick Start MCP
 
 ```bash
-# 1. Instalar dependencias
-uv sync --dev
+# 1. Iniciar servidor
+uv run uvicorn app.main:app --host 0.0.0.0 --port 8001
 
-# 2. Instalar hooks de Git
-uv run pre-commit install
-uv run pre-commit install --hook-type prepare-commit-msg
-uv run pre-commit install --hook-type commit-msg
-uv run pre-commit install --hook-type pre-push
+# 2. Configurar Claude Code
+claude mcp add --transport http taiga-local http://localhost:8001/mcp
+
+# 3. Usar Claude normalmente
+# Claude detectará automáticamente cuándo necesita interactuar con Taiga
 ```
 
-## Ejecución en Desarrollo
+**Documentación completa**: Ver [`util/MCP_SETUP.md`](util/MCP_SETUP.md)
 
-### Iniciar Servidor
+## 🛠️ Desarrollo
+
+### Estructura del Proyecto
+
+```
+taiga-fastapi-uv/
+├── app/
+│   ├── main.py              # FastAPI app principal
+│   ├── taiga_client.py      # Cliente de API de Taiga
+│   ├── crud.py              # Operaciones de base de datos
+│   ├── models.py            # Modelos SQLAlchemy
+│   ├── schemas.py           # Schemas Pydantic
+│   ├── sync_service.py      # Servicio de sincronización
+│   ├── markdown_parser.py   # Parser de markdown para tareas
+│   └── templates/
+│       └── table_map.html   # Interfaz web interactiva
+├── tests/                   # Tests unitarios e integración
+├── scripts/
+│   ├── setup-dev.sh         # Setup completo del entorno
+│   └── update.sh            # Helper para commits
+├── alembic/                 # Migraciones de base de datos
+├── util/                    # Documentación adicional
+└── .env                     # Configuración (no commiteado)
+```
+
+### Comandos de Desarrollo
 
 ```bash
-# Usando uv (recomendado)
-uv run uvicorn app.main:app --reload
+# Iniciar servidor en desarrollo
+make dev                     # http://0.0.0.0:8001
 
-# El servidor estará disponible en:
-# - API: http://localhost:8000
-# - Documentación interactiva: http://localhost:8000/docs
+# Tests
+make test                    # Todos los tests con cobertura
+make test-unit               # Solo tests unitarios
+
+# Calidad de código
+make lint                    # flake8 + pylint
+make format                  # black + isort
+make ci                      # Validación completa (simula CI)
+
+# Commits
+./scripts/update.sh --local "feat(api): descripción"  # Commit local
+./scripts/update.sh --remote                           # Análisis + push
 ```
 
-### Ejecutar Tests
+### Flujo de Trabajo Git
+
+El proyecto usa **Conventional Commits** con hooks automáticos:
+
+```bash
+# Formato de commits
+feat(scope): descripción     # Nueva funcionalidad
+fix(scope): descripción      # Bug fix
+docs: descripción            # Documentación
+test: descripción            # Tests
+```
+
+**Tipos válidos**: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`, `perf`, `ci`, `build`
+
+**Validaciones automáticas** (hooks de Git):
+- ✅ Formateo de código (black, isort)
+- ✅ Linting (flake8, pylint)
+- ✅ Detección de secretos
+- ✅ Tests (obligatorios en `main`)
+- ✅ Actualización automática de CHANGELOG.md
+
+### Tests
 
 ```bash
 # Todos los tests
 uv run pytest
 
-# Con cobertura
+# Con cobertura (mínimo 80%)
 uv run pytest --cov=app --cov-report=term-missing
 
-# Solo tests unitarios
+# Solo unitarios (sin integración)
 uv run pytest -m "not integration"
+
+# Test específico
+uv run pytest tests/test_client.py::test_authentication -v
 ```
 
-### Validaciones Manuales
+### Base de Datos
 
 ```bash
-# Ejecutar todas las validaciones pre-commit
-uv run pre-commit run --all-files
+# Crear migración
+alembic revision --autogenerate -m "descripción"
 
-# Formatear código
-uv run black app/ tests/
-uv run isort app/ tests/
+# Aplicar migraciones
+alembic upgrade head
 
-# Linting
-uv run flake8 app/
-uv run pylint app/
+# Rollback
+alembic downgrade -1
 ```
 
-El servicio quedará disponible en `http://0.0.0.0:8000/`.
+## 📚 Recursos Adicionales
 
-Para usar la api se recomienda ver la documentación `http://0.0.0.0:8000/docs`.
+### Documentación del Proyecto
 
-## Endpoints Disponibles
+- **[`util/vuce-sidom-architecture.md`](util/vuce-sidom-architecture.md)**: Arquitectura completa del sistema VUCE-SIDOM
+- **[`util/kit-maria-integration.md`](util/kit-maria-integration.md)**: Integración con KIT Malvina/Maria
+- **[`util/d5-catalogo-documentacion.md`](util/d5-catalogo-documentacion.md)**: Documentación del módulo D5 (Catálogo)
+- **[`util/system-overview.md`](util/system-overview.md)**: Visión general del sistema
 
-### Gestión de Proyectos
+### Documentación Técnica
 
-#### Listar proyectos
+- **[`util/MCP_SETUP.md`](util/MCP_SETUP.md)**: Configuración MCP para Claude Code
+- **[`util/DEVELOPMENT.md`](util/DEVELOPMENT.md)**: Guía detallada de desarrollo
+- **[`.llms`](.llms)**: Contrato LLM-Humano y reglas del proyecto
+- **[`CHANGELOG.md`](CHANGELOG.md)**: Historial de cambios (auto-generado)
 
-`GET /projects`
+### Documentación Privada (Cache Local)
 
-```bash
-curl "http://0.0.0.0:8000/projects"
-```
+- **[`util/llm-docs-proyect/`](util/llm-docs-proyect/)**: Documentación privada del proyecto (no commiteada)
+  - README con estado completo y métricas
+  - Desgloses técnicos de historias de usuario
+  - Diagramas DrawIO de flujos y modelo de datos
+  - Snapshots JSON de datos de Taiga
+  - Archivos para carga masiva
 
-Retorna todos los proyectos accesibles por el usuario autenticado.
+### API Interactiva
 
-#### Obtener detalle de proyecto
+Una vez iniciado el servidor, accede a:
+- **Swagger UI**: http://localhost:8001/docs
+- **ReDoc**: http://localhost:8001/redoc
 
-`GET /projects/{project_id}`
+### Soporte
 
-```bash
-curl "http://0.0.0.0:8000/projects/vuce-sidom-dai"
-```
+- **Issues de GitHub**: Para reportar bugs o solicitar funcionalidades
+- **Administrador de Taiga**: Si tienes problemas de permisos o configuración de la instancia
 
-### Gestión de Tareas
+## 📄 Licencia
 
-#### Listar tareas
+Este proyecto es parte del programa VUCE-SIDOM DAI financiado por BID 3869/OC-AR.
 
-`GET /tasks?project={id}&user_story={id}&status={id}&assigned_to={id}`
+---
 
-```bash
-# Todas las tareas de un proyecto
-curl "http://0.0.0.0:8000/tasks?project=vuce-sidom-dai"
+**Última actualización**: 2025-01-16
 
-# Tareas de una historia específica
-curl "http://0.0.0.0:8000/tasks?user_story=42"
-
-# Tareas por estado
-curl "http://0.0.0.0:8000/tasks?project=1&status=2"
-```
-
-#### Obtener detalle de tarea
-
-`GET /tasks/{task_id}`
-
-```bash
-curl "http://0.0.0.0:8000/tasks/123"
-```
-
-#### Actualizar tarea
-
-`PATCH /tasks/{task_id}?subject=...&status=...&version=...`
-
-```bash
-curl -X PATCH "http://0.0.0.0:8000/tasks/123?subject=Nueva%20descripción&status=2&version=1"
-```
-
-#### Crear tarea
-
-`POST /tasks`
-
-```bash
-curl -X POST http://0.0.0.0:8000/tasks \
-  -H "Content-Type: application/json" \
-  -d '{
-    "project": "sample-project-slug",
-    "subject": "Nueva tarea",
-    "user_story": 42,
-    "description": "Descripción opcional"
-  }'
-```
-
-```bash
-curl -X POST http://0.0.0.0:8000/tasks \
-  -H "Content-Type: application/json" \
-  -d '{
-    "project": 123,
-    "subject": "Nueva tarea por ID"
-  }'
-```
-
-La respuesta exitosa incluye `id`, `subject`, `project`, `user_story` y `ref`.
-
-### Gestión de Épicas
-
-#### Listar épicas
-
-`GET /epics?project=<id>`
-
-```bash
-# Por ID de proyecto (recomendado)
-curl "http://0.0.0.0:8000/epics?project=3"
-
-# Por slug (también soportado)
-curl "http://0.0.0.0:8000/epics?project=sample-project-slug"
-```
-
-Retorna lista de épicas con campos base (id, ref, subject, project, color, description, created_date).
-
-#### Obtener detalle de épica
-
-`GET /epics/{epic_id}?verbose=<true|false>&include_user_stories=<true|false>&include_tasks=<true|false>`
-
-```bash
-# Solo épica con títulos de user stories
-curl "http://0.0.0.0:8000/epics/5"
-
-# Épica con detalles completos de US y tareas
-curl "http://0.0.0.0:8000/epics/5?verbose=true&include_user_stories=true&include_tasks=true"
-
-# Épica solo con tareas (sin US)
-curl "http://0.0.0.0:8000/epics/5?include_user_stories=false&include_tasks=true"
-```
-
-**Parámetros:**
-- `verbose`: false (default) trae solo títulos de US, true trae todos los campos
-- `include_user_stories`: true (default) incluye US asociadas
-- `include_tasks`: false (default), true incluye todas las tareas de las US
-
-#### Mapa completo del proyecto
-
-`GET /project-map?project=<id_o_slug>&include_tasks=<true|false>`
-
-```bash
-# Estructura completa: Epics → User Stories → Tasks
-curl "http://0.0.0.0:8000/project-map?project=3&include_tasks=true"
-```
-
-Retorna estructura jerárquica completa del proyecto, incluyendo US sin épica asignada.
-
-### Gestión de Historias de Usuario
-
-#### Listar historias de usuario
-
-`GET /user-stories?project=<id_o_slug>&titles_only=<true|false>&epic=<epic_id>`
-
-```bash
-# Todas las US de un proyecto
-curl "http://0.0.0.0:8000/user-stories?project=sample-project-slug&titles_only=true"
-
-# Solo US de una épica específica
-curl "http://0.0.0.0:8000/user-stories?project=3&epic=5"
-```
-
-#### Obtener detalle de historia de usuario
-
-`GET /user-stories/{user_story_id}?include_tasks=<true|false>`
-
-```bash
-# Solo la historia
-curl "http://0.0.0.0:8000/user-stories/42"
-
-# Historia con todas sus tareas
-curl "http://0.0.0.0:8000/user-stories/42?include_tasks=true"
-```
-
-#### Crear historia de usuario
-
-`POST /user-stories`
-
-```bash
-curl -X POST http://0.0.0.0:8000/user-stories \
-  -H "Content-Type: application/json" \
-  -d '{
-    "project": "sample-project-slug",
-    "subject": "Nueva historia de usuario",
-    "description": "Descripción detallada de la historia",
-    "tags": ["backend", "api"]
-  }'
-```
-
-```bash
-curl -X POST http://0.0.0.0:8000/user-stories \
-  -H "Content-Type: application/json" \
-  -d '{
-    "project": 123,
-    "subject": "Nueva historia por ID de proyecto"
-  }'
-```
-
-La respuesta exitosa incluye `id`, `subject`, `project`, `description`, `tags` y `ref`.
-
-#### Actualizar historia de usuario
-
-`PATCH /user-stories/{user_story_id}`
-
-```bash
-curl -X PATCH http://0.0.0.0:8000/user-stories/42 \
-  -H "Content-Type: application/json" \
-  -d '{
-    "description": "Descripción actualizada",
-    "version": 1
-  }'
-```
-
-**Nota:** El campo `version` es obligatorio para control de concurrencia. Obtén la versión actual con `GET /user-stories/{id}`.
-
-#### Listar tareas de una historia
-
-`GET /user-stories/{user_story_id}/tasks`
-
-```bash
-curl "http://0.0.0.0:8000/user-stories/42/tasks"
-```
-
-### Metadatos del Proyecto
-
-#### Obtener estados de tareas
-
-`GET /projects/{project_id}/task-statuses`
-
-```bash
-curl "http://0.0.0.0:8000/projects/vuce-sidom-dai/task-statuses"
-```
-
-#### Obtener estados de historias
-
-`GET /projects/{project_id}/userstory-statuses`
-
-```bash
-curl "http://0.0.0.0:8000/projects/vuce-sidom-dai/userstory-statuses"
-```
-
-#### Obtener milestones/sprints
-
-`GET /projects/{project_id}/milestones`
-
-```bash
-curl "http://0.0.0.0:8000/projects/3/milestones"
-```
-
-Retorna información completa de cada milestone: id, name, estimated_start, estimated_finish, closed, total_points, closed_points, user_stories asociadas.
-
-#### Obtener tags del proyecto
-
-`GET /projects/{project_id}/tags`
-
-```bash
-curl "http://0.0.0.0:8000/projects/3/tags"
-```
-
-Retorna diccionario con tags y sus colores: `{"backend": "#FF5733", "frontend": "#33FF57", ...}`
-
-### Autenticación Dinámica
-
-#### Establecer bearer token
-
-`POST /auth/token`
-
-```bash
-curl -X POST http://0.0.0.0:8000/auth/token \
-  -H "Content-Type: application/json" \
-  -d '{
-    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-  }'
-```
-
-Actualiza el token de autenticación sin reiniciar el servidor. Útil cuando el token expira o necesitas cambiar de usuario.
-
-**Response:**
-```json
-{
-  "authenticated": true,
-  "user": "fernandop",
-  "token_preview": "eyJhbGc...aSFrVSc8 (hidden)",
-  "expires_at": "2025-01-10T12:00:00Z",
-  "message": "Bearer token establecido correctamente"
-}
-```
-
-### Depuración
-
-- `POST /debug/cache/clear` limpia el token cacheado (fuerza nueva autenticación en el próximo request).
-- `GET /debug/connection` verifica la conexión contra Taiga y devuelve el usuario autenticado y la expiración del token. Si falla, indica usar `POST /auth/token`.
-- `GET /debug/state` expone el estado actual del cliente (base URL normalizada, si hay token cacheado y el último response recibido).
-- `POST /debug/auth` ejecuta el login y devuelve el status y payload exactamente como responde Taiga (ideal para diagnosticar credenciales).
+**Estado del Proyecto**:
+- ✅ API REST completa funcional
+- ✅ Interfaz web interactiva con editor markdown
+- ✅ Sincronización bidireccional con Taiga
+- ✅ Integración MCP para Claude Code
+- 🚧 Gestión de épicas desde interfaz (pendiente)
+- 🚧 Creación y edición de tareas desde interfaz (pendiente)

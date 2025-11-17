@@ -1,7 +1,7 @@
 """Initial migration with Project, Epic, UserStory, Task, Tag models
 
 Revision ID: fc0a31b11810
-Revises: 
+Revises:
 Create Date: 2025-11-15 23:13:31.324567
 
 """

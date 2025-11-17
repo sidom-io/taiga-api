@@ -1,18 +1,20 @@
 import os
 from pathlib import Path
-from typing import Annotated, List, Union
+from typing import Annotated, Dict, List, Optional, Union
 
 from dotenv import find_dotenv, load_dotenv
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from fastapi_mcp import FastApiMCP
+from sqlalchemy import case, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import crud
 from app.auth import get_optional_auth, require_auth, session_store
 from app.database import close_db, get_db, init_db
 from app.markdown_parser import MarkdownTaskParser
+from app.models import Epic, Project, Tag, Task, UserStory
 from app.sync_service import sync_all_projects, sync_project
 from app.schemas import (
     AuthStatusResponse,
@@ -25,6 +27,7 @@ from app.schemas import (
     TokenSetRequest,
     UserStoryDetailResponse,
     UserStoryResponse,
+    DraftStatePayload,
 )
 from app.taiga_client import TaigaClient, TaigaClientError
 
@@ -43,6 +46,100 @@ mcp.mount()
 
 # Configure Jinja2 templates
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
+
+
+async def _resolve_project(db: AsyncSession, identifier: Union[int, str]) -> Optional[Project]:
+    """Resolve a project given a Taiga ID or slug."""
+    project: Optional[Project] = None
+    try:
+        taiga_id = int(identifier)
+        project = await crud.get_project_by_taiga_id(db, taiga_id)
+    except (ValueError, TypeError):
+        project = await crud.get_project_by_slug(db, str(identifier))
+    return project
+
+
+async def _normalize_project_versions(db: AsyncSession, project_id: int) -> None:
+    """
+    Clamp project user story/task versions to either MVP (1) or Post-MVP (2).
+    """
+
+    version_case_user_story = case(
+        (UserStory.version.is_(None), 1),
+        (UserStory.version <= 1, 1),
+        else_=2,
+    )
+
+    version_case_task = case(
+        (Task.version.is_(None), 1),
+        (Task.version <= 1, 1),
+        else_=2,
+    )
+
+    await db.execute(
+        update(UserStory)
+        .where(UserStory.project_id == project_id)
+        .values(version=version_case_user_story)
+    )
+    await db.execute(
+        update(Task)
+        .where(Task.project_id == project_id)
+        .values(version=version_case_task)
+    )
+    await db.commit()
+
+
+def _build_story_details(epics: List[Epic], orphans: List[UserStory]) -> Dict[int, Dict]:
+    """
+    Prepare a lightweight mapping of user story details for modal rendering.
+    """
+
+    details: Dict[int, Dict] = {}
+
+    def _serialize(user_story: UserStory) -> Dict:
+        raw_data = user_story.raw_data or {}
+        serialized_tasks = [
+            {
+                "id": task.id,
+                "taiga_id": task.taiga_id,
+                "ref": task.ref,
+                "subject": task.subject or "",
+                "description": task.description or "",
+                "description_html": (task.raw_data or {}).get("description_html") or "",
+                "tags": [
+                    assoc.tag.name
+                    for assoc in getattr(task, "tags", [])
+                    if assoc.tag is not None
+                ],
+            }
+            for task in user_story.tasks
+        ]
+
+        return {
+            "id": user_story.id,
+            "taiga_id": user_story.taiga_id,
+            "ref": user_story.ref,
+            "subject": user_story.subject,
+            "description": user_story.description or raw_data.get("description") or "",
+            "description_html": raw_data.get("description_html") or "",
+            "description_text": raw_data.get("description_text") or "",
+            "version": user_story.version,
+            "tags": [
+                assoc.tag.name
+                for assoc in getattr(user_story, "tags", [])
+                if assoc.tag is not None
+            ],
+            "tasks": serialized_tasks,
+        }
+
+    for epic in epics:
+        for user_story in epic.user_stories:
+            details[user_story.id] = _serialize(user_story)
+
+    for user_story in orphans:
+        details[user_story.id] = _serialize(user_story)
+
+    return details
 
 
 def _load_env(variable: str) -> str:
@@ -186,6 +283,24 @@ async def get_epic(
 
     except TaigaClientError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.patch("/epics/{epic_id}", response_model=EpicResponse)
+async def update_epic(
+    epic_id: int,
+    taiga_client: TaigaClientDep,
+    description: str = None,
+    version: int = 1,
+) -> EpicResponse:
+    """Actualiza una épica."""
+    try:
+        epic = await taiga_client.update_epic(
+            epic_id=epic_id, description=description, version=version
+        )
+    except TaigaClientError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    return EpicResponse(**epic)
 
 
 @app.get("/project-map")
@@ -517,23 +632,18 @@ async def get_table_map(
         - Estadísticas del proyecto
         - User stories huérfanas (sin epic)
     """
-    from sqlalchemy import func, select
     from sqlalchemy.orm import selectinload
 
-    from app.models import Epic, Project, Task, UserStory
-
-    # Get project from DB
-    # Try to parse as int first (Taiga ID)
-    try:
-        project_id = int(project)
-        db_project = await crud.get_project_by_taiga_id(db, project_id)
-    except (ValueError, TypeError):
-        # If not an int, treat as slug
-        result = await db.execute(select(Project).where(Project.slug == str(project)))
-        db_project = result.scalar_one_or_none()
+    db_project = await _resolve_project(db, project)
 
     if not db_project:
-        raise HTTPException(status_code=404, detail=f"Project '{project}' not found in database. Run POST /sync?project={project} first.")
+        raise HTTPException(
+            status_code=404,
+            detail=f"Project '{project}' not found in database. Run POST /sync?project={project} first.",
+        )
+
+    # Normalize versions to MVP/Post-MVP buckets for this project
+    await _normalize_project_versions(db, db_project.id)
 
     # Get epics with their user stories and tasks (with tags eagerly loaded)
     epics_result = await db.execute(
@@ -591,13 +701,21 @@ async def get_table_map(
     )
     total_tasks = total_tasks_result.scalar()
 
-    # Count tags
-    from app.models import Tag
-    tags_result = await db.execute(
-        select(func.count(Tag.id))
+    # Count tags and fetch definitions
+    tags_query = await db.execute(
+        select(Tag)
         .where(Tag.project_id == db_project.id)
+        .order_by(Tag.name)
     )
-    total_tags = tags_result.scalar()
+    project_tags_models = list(tags_query.scalars().all())
+    total_tags = len(project_tags_models)
+    project_tags = [
+        {
+            "name": tag.name,
+            "color": tag.color or "#6c757d"
+        }
+        for tag in project_tags_models
+    ]
 
     stats = {
         "epics": len(epics),
@@ -608,8 +726,33 @@ async def get_table_map(
 
     # Generate AI reorganization proposals
     from app.ai_reorganizer import AIReorganizer
+
     ai = AIReorganizer()
     analysis = ai.analyze_project(epics, orphan_user_stories)
+
+    proposals = analysis["proposals"]
+    analyzed_epic_refs = {
+        proposal.get("current_epic_ref")
+        for proposal in proposals
+        if proposal.get("current_epic_ref") is not None
+    }
+
+    # Extend modules with project-specific epics that were not analyzed
+    draft_modules = {key: value for key, value in analysis["modules"].items()}
+    for epic in epics:
+        if epic.ref in analyzed_epic_refs:
+            continue
+        module_key = f"project-epic-{epic.ref}"
+        if module_key in draft_modules:
+            continue
+        draft_modules[module_key] = {
+            "name": epic.subject or f"Epic #{epic.ref}",
+            "description": epic.description or f"Epic #{epic.ref}",
+            "color": epic.color or "#6c757d",
+        }
+
+    story_details = _build_story_details(epics, orphan_user_stories)
+    draft_state = await crud.get_draft_board_state(db, db_project.id)
 
     return templates.TemplateResponse(
         "table_map.html",
@@ -620,6 +763,11 @@ async def get_table_map(
             "orphan_user_stories": orphan_user_stories,
             "stats": stats,
             "ai_analysis": analysis,
+            "draft_modules": draft_modules,
+            "story_details": story_details,
+            "draft_state": draft_state,
+            "project_tags": project_tags,
+            "show_token_modal": not session_store.has_valid_token(),
         },
     )
 
@@ -670,6 +818,36 @@ async def list_tasks(
         )
     except TaigaClientError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.get("/projects/{project_id}/draft")
+async def get_project_draft_state(
+    project_id: Union[int, str],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """Devuelve el estado actual del borrador persistido."""
+    project = await _resolve_project(db, project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail=f"Project '{project_id}' not found")
+
+    state = await crud.get_draft_board_state(db, project.id)
+    return {"project": project_id, "state": state}
+
+
+@app.post("/projects/{project_id}/draft")
+async def save_project_draft_state(
+    project_id: Union[int, str],
+    payload: DraftStatePayload,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _token: Annotated[str, Depends(require_auth)],
+) -> dict:
+    """Persiste el estado del tablero de borrador en la base de datos."""
+    project = await _resolve_project(db, project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail=f"Project '{project_id}' not found")
+
+    await crud.save_draft_board_state(db, project.id, payload.state)
+    return {"project": project_id, "status": "saved"}
 
 
 @app.get("/tasks/{task_id}")

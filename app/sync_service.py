@@ -98,8 +98,11 @@ async def sync_project(
 
         for epic_data in epics_data:
             try:
-                existing_epic = await crud.get_epic_by_taiga_id(db, epic_data["id"])
-                await crud.create_or_update_epic(db, epic_data, project_db_id)
+                # Get full epic details (including description)
+                full_epic_data = await taiga_client.get_epic(epic_data["id"])
+
+                existing_epic = await crud.get_epic_by_taiga_id(db, full_epic_data["id"])
+                await crud.create_or_update_epic(db, full_epic_data, project_db_id)
 
                 if existing_epic:
                     stats.epics_updated += 1
@@ -122,27 +125,30 @@ async def sync_project(
 
         for us_data in userstories_data:
             try:
+                # Get full user story details (including description)
+                full_us_data = await taiga_client.get_user_story(us_data["id"])
+                
                 # Get epic DB ID if user story belongs to an epic
                 # Note: Taiga API returns 'epics' as array, use first epic if exists
                 epic_db_id = None
-                epic_taiga_id = us_data.get("epic")  # Try singular first (some endpoints)
-                if not epic_taiga_id and us_data.get("epics"):  # Try plural (array)
+                epic_taiga_id = full_us_data.get("epic")  # Try singular first (some endpoints)
+                if not epic_taiga_id and full_us_data.get("epics"):  # Try plural (array)
                     # Get first epic from array
-                    epics_list = us_data.get("epics", [])
+                    epics_list = full_us_data.get("epics", [])
                     if epics_list and len(epics_list) > 0:
                         epic_taiga_id = epics_list[0].get("id")
 
                 if epic_taiga_id:
                     epic_db_id = epic_mapping.get(epic_taiga_id)
 
-                existing_us = await crud.get_userstory_by_taiga_id(db, us_data["id"])
+                existing_us = await crud.get_userstory_by_taiga_id(db, full_us_data["id"])
                 us = await crud.create_or_update_userstory(
-                    db, us_data, project_db_id, epic_db_id
+                    db, full_us_data, project_db_id, epic_db_id
                 )
 
                 # Sync tags for user story
-                if us_data.get("tags"):
-                    await crud.sync_userstory_tags(db, us, us_data["tags"])
+                if full_us_data.get("tags"):
+                    await crud.sync_userstory_tags(db, us, full_us_data["tags"])
 
                 if existing_us:
                     stats.userstories_updated += 1
@@ -165,19 +171,22 @@ async def sync_project(
 
         for task_data in tasks_data:
             try:
+                # Get full task details (including description)
+                full_task_data = await taiga_client.get_task(task_data["id"])
+
                 # Get user story DB ID if task belongs to one
                 us_db_id = None
-                if task_data.get("user_story"):
-                    us_db_id = us_mapping.get(task_data["user_story"])
+                if full_task_data.get("user_story"):
+                    us_db_id = us_mapping.get(full_task_data["user_story"])
 
-                existing_task = await crud.get_task_by_taiga_id(db, task_data["id"])
+                existing_task = await crud.get_task_by_taiga_id(db, full_task_data["id"])
                 task = await crud.create_or_update_task(
-                    db, task_data, project_db_id, us_db_id
+                    db, full_task_data, project_db_id, us_db_id
                 )
 
                 # Sync tags for task
-                if task_data.get("tags"):
-                    await crud.sync_task_tags(db, task, task_data["tags"])
+                if full_task_data.get("tags"):
+                    await crud.sync_task_tags(db, task, full_task_data["tags"])
 
                 if existing_task:
                     stats.tasks_updated += 1

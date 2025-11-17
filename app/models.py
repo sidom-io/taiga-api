@@ -38,6 +38,9 @@ class Project(Base):
     user_stories: Mapped[List["UserStory"]] = relationship("UserStory", back_populates="project", cascade="all, delete-orphan")
     tasks: Mapped[List["Task"]] = relationship("Task", back_populates="project", cascade="all, delete-orphan")
     tags: Mapped[List["Tag"]] = relationship("Tag", back_populates="project", cascade="all, delete-orphan")
+    draft_board: Mapped[Optional["DraftBoard"]] = relationship(
+        "DraftBoard", back_populates="project", cascade="all, delete-orphan", uselist=False
+    )
 
     def __repr__(self) -> str:
         return f"<Project(id={self.id}, taiga_id={self.taiga_id}, name='{self.name}')>"
@@ -205,3 +208,19 @@ class TaskTag(Base):
 
     def __repr__(self) -> str:
         return f"<TaskTag(task_id={self.task_id}, tag_id={self.tag_id})>"
+
+
+class DraftBoard(Base):
+    """Stores the latest draft board state for a project."""
+
+    __tablename__ = "draft_boards"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), unique=True, nullable=False)
+    state: Mapped[dict] = mapped_column(JSON, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    project: Mapped["Project"] = relationship("Project", back_populates="draft_board")
+
+    def __repr__(self) -> str:
+        return f"<DraftBoard(project_id={self.project_id}, updated_at='{self.updated_at}')>"

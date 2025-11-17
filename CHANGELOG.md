@@ -44,6 +44,75 @@ Commits analizados: 29 (período 2025-01-07 a 2025-01-16)
 
 Co-Authored-By: Claude <noreply@anthropic.com>
 
+# Please enter the commit message for your changes. Lines starting
+# with '#' will be ignored, and an empty message aborts the commit.
+#
+# Date:      Sun Nov 16 21:29:18 2025 -0300
+#
+# On branch main
+# Your branch is ahead of 'origin/main' by 2 commits.
+#   (use "git push" to publish your local commits)
+#
+# Changes to be committed:
+#	new file:   .codex/config.toml
+#	modified:   .mcp.json
+#	modified:   CHANGELOG.md
+#	modified:   README.md
+#	modified:   alembic/README
+#	new file:   alembic/versions/4bb2e9540b5d_add_draft_board_table.py
+#	modified:   alembic/versions/fc0a31b11810_initial_migration_with_project_epic_.py
+#	modified:   app/ai_reorganizer.py
+#	modified:   app/crud.py
+#	modified:   app/main.py
+#	modified:   app/models.py
+#	modified:   app/schemas.py
+#	modified:   app/sync_service.py
+#	modified:   app/taiga_client.py
+#	modified:   app/templates/table_map.html
+#	modified:   pyproject.toml
+#	new file:   scripts/fetch_stories_from_api.py
+#	new file:   scripts/import_map_mvp.py
+#	modified:   taiga_sync.db
+#
+# Changes not staged for commit:
+#	modified:   app/sync_service.py
+#
+- actualizar documentación con interfaz web interactiva y cambios recientes
+
+Cambios en README.md:
+- Reescritura completa con enfoque en funcionalidades actuales
+- Sección destacada de features implementadas vs pendientes
+- Guía completa de uso de interfaz /table-map
+- Documentación detallada del editor de 3 tabs
+- Issues pendientes documentados (gestión de épicas, tareas desde interfaz)
+- Eliminada documentación obsoleta del flujo DAI
+- Port actualizado a 8001
+- Quick start simplificado en 4 pasos
+
+Cambios en CHANGELOG.md:
+- Nueva sección 'Added - Interfaz Web Interactiva (2025-01-16)'
+- Documentación de visualización jerárquica Epic → US → Task
+- Editor markdown con persistencia de drafts y sync bidireccional
+- Control de versiones automático para prevenir conflictos
+- Sección 'Changed' con mejoras de UX y backend
+- Sección 'Fixed' con 5 fixes críticos documentados
+- Metadata de commits analizados (29 commits, 10 días)
+
+Features documentadas:
+- Interfaz web /table-map con editor markdown completo
+- 3 tabs: Source (editable), Vista Previa (tiempo real), HTML (Taiga)
+- Persistencia en localStorage con carga/limpieza automática
+- Control de versiones optimista con fetch de versión actual
+- Renderizado Mermaid + syntax highlighting
+- Gestión de tags con colores
+- 8 nuevos endpoints de API
+
+Commits analizados: 29 (período 2025-01-07 a 2025-01-16)
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+
 ### Added - Interfaz Web Interactiva (2025-01-16)
 
 **🎨 Interfaz Web `/table-map` - Editor Markdown Completo**
@@ -110,6 +179,75 @@ Co-Authored-By: Claude <noreply@anthropic.com>
   - Mejoras de interfaz (drag & drop, filtros)
 
 ### Changed
+- actualizar documentación con interfaz web interactiva y cambios recientes
+
+Cambios en README.md:
+- Reescritura completa con enfoque en funcionalidades actuales
+- Sección destacada de features implementadas vs pendientes
+- Guía completa de uso de interfaz /table-map
+- Documentación detallada del editor de 3 tabs
+- Issues pendientes documentados (gestión de épicas, tareas desde interfaz)
+- Eliminada documentación obsoleta del flujo DAI
+- Port actualizado a 8001
+- Quick start simplificado en 4 pasos
+
+Cambios en CHANGELOG.md:
+- Nueva sección 'Added - Interfaz Web Interactiva (2025-01-16)'
+- Documentación de visualización jerárquica Epic → US → Task
+- Editor markdown con persistencia de drafts y sync bidireccional
+- Control de versiones automático para prevenir conflictos
+- Sección 'Changed' con mejoras de UX y backend
+- Sección 'Fixed' con 5 fixes críticos documentados
+- Metadata de commits analizados (29 commits, 10 días)
+
+Features documentadas:
+- Interfaz web /table-map con editor markdown completo
+- 3 tabs: Source (editable), Vista Previa (tiempo real), HTML (Taiga)
+- Persistencia en localStorage con carga/limpieza automática
+- Control de versiones optimista con fetch de versión actual
+- Renderizado Mermaid + syntax highlighting
+- Gestión de tags con colores
+- 8 nuevos endpoints de API
+
+Commits analizados: 29 (período 2025-01-07 a 2025-01-16)
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+
+# Please enter the commit message for your changes. Lines starting
+# with '#' will be ignored, and an empty message aborts the commit.
+#
+# Date:      Sun Nov 16 21:29:18 2025 -0300
+#
+# On branch main
+# Your branch is ahead of 'origin/main' by 2 commits.
+#   (use "git push" to publish your local commits)
+#
+# Changes to be committed:
+#	new file:   .codex/config.toml
+#	modified:   .mcp.json
+#	modified:   CHANGELOG.md
+#	modified:   README.md
+#	modified:   alembic/README
+#	new file:   alembic/versions/4bb2e9540b5d_add_draft_board_table.py
+#	modified:   alembic/versions/fc0a31b11810_initial_migration_with_project_epic_.py
+#	modified:   app/ai_reorganizer.py
+#	modified:   app/crud.py
+#	modified:   app/main.py
+#	modified:   app/models.py
+#	modified:   app/schemas.py
+#	modified:   app/sync_service.py
+#	modified:   app/taiga_client.py
+#	modified:   app/templates/table_map.html
+#	modified:   pyproject.toml
+#	new file:   scripts/fetch_stories_from_api.py
+#	new file:   scripts/import_map_mvp.py
+#	modified:   taiga_sync.db
+#
+# Changes not staged for commit:
+#	modified:   app/sync_service.py
+#
 
 - **Backend**: `_serialize()` en `main.py` ahora incluye `taiga_id` y `version` para User Stories y Tasks
 - **Frontend**: Editor visible por defecto (sin botón "Editar")
@@ -153,6 +291,75 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 - Soporte para omitir tests en ramas de desarrollo (SKIP_TESTS=1)
 
 ### Changed
+- actualizar documentación con interfaz web interactiva y cambios recientes
+
+Cambios en README.md:
+- Reescritura completa con enfoque en funcionalidades actuales
+- Sección destacada de features implementadas vs pendientes
+- Guía completa de uso de interfaz /table-map
+- Documentación detallada del editor de 3 tabs
+- Issues pendientes documentados (gestión de épicas, tareas desde interfaz)
+- Eliminada documentación obsoleta del flujo DAI
+- Port actualizado a 8001
+- Quick start simplificado en 4 pasos
+
+Cambios en CHANGELOG.md:
+- Nueva sección 'Added - Interfaz Web Interactiva (2025-01-16)'
+- Documentación de visualización jerárquica Epic → US → Task
+- Editor markdown con persistencia de drafts y sync bidireccional
+- Control de versiones automático para prevenir conflictos
+- Sección 'Changed' con mejoras de UX y backend
+- Sección 'Fixed' con 5 fixes críticos documentados
+- Metadata de commits analizados (29 commits, 10 días)
+
+Features documentadas:
+- Interfaz web /table-map con editor markdown completo
+- 3 tabs: Source (editable), Vista Previa (tiempo real), HTML (Taiga)
+- Persistencia en localStorage con carga/limpieza automática
+- Control de versiones optimista con fetch de versión actual
+- Renderizado Mermaid + syntax highlighting
+- Gestión de tags con colores
+- 8 nuevos endpoints de API
+
+Commits analizados: 29 (período 2025-01-07 a 2025-01-16)
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+
+# Please enter the commit message for your changes. Lines starting
+# with '#' will be ignored, and an empty message aborts the commit.
+#
+# Date:      Sun Nov 16 21:29:18 2025 -0300
+#
+# On branch main
+# Your branch is ahead of 'origin/main' by 2 commits.
+#   (use "git push" to publish your local commits)
+#
+# Changes to be committed:
+#	new file:   .codex/config.toml
+#	modified:   .mcp.json
+#	modified:   CHANGELOG.md
+#	modified:   README.md
+#	modified:   alembic/README
+#	new file:   alembic/versions/4bb2e9540b5d_add_draft_board_table.py
+#	modified:   alembic/versions/fc0a31b11810_initial_migration_with_project_epic_.py
+#	modified:   app/ai_reorganizer.py
+#	modified:   app/crud.py
+#	modified:   app/main.py
+#	modified:   app/models.py
+#	modified:   app/schemas.py
+#	modified:   app/sync_service.py
+#	modified:   app/taiga_client.py
+#	modified:   app/templates/table_map.html
+#	modified:   pyproject.toml
+#	new file:   scripts/fetch_stories_from_api.py
+#	new file:   scripts/import_map_mvp.py
+#	modified:   taiga_sync.db
+#
+# Changes not staged for commit:
+#	modified:   app/sync_service.py
+#
 - update with latest API changes
 
 Update CHANGELOG with epic endpoints, dynamic auth, milestones and tags features

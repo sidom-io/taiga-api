@@ -127,7 +127,7 @@ async def sync_project(
             try:
                 # Get full user story details (including description)
                 full_us_data = await taiga_client.get_user_story(us_data["id"])
-                
+
                 # Get epic DB ID if user story belongs to an epic
                 # Note: Taiga API returns 'epics' as array, use first epic if exists
                 epic_db_id = None

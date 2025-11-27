@@ -7,6 +7,27 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 
 ## [Unreleased]
 
+## [Unreleased]
+
+### Added
+- **Grafana Stack**: Integración completa con Docker Compose (Postgres, Prometheus, Grafana).
+- **SimpleJson Adapter**: Nuevo módulo `app/simple_json_api.py` para adaptar endpoints REST a datasources de Grafana.
+- **Dashboards**: Dashboard "Taiga Metrics" pre-configurado con 4 paneles principales.
+- **Database**: Nuevas columnas `total_points` y `finish_date` en tabla `user_stories` para métricas de velocidad.
+
+### Fixed
+- **Grafana Datasource**: Corregido error "Data source not found" agregando `uid: taiga_api` explícito.
+- **Grafana Compatibility**: Downgrade a Grafana 10.4.2 para soportar plugin SimpleJson (Angular).
+- **Metrics**: Corregido cálculo de velocidad de sprint agrupando por Milestone en lugar de fecha de fin.
+- **Sync**: Solucionado problema donde `total_points` no se guardaba desde `raw_data`.
+- **Dashboard Panels**: Actualizados selectores de campos (Regex) para coincidir con nombres de columnas de la API.
+
+### Changed
+- **Puertos**: Grafana movido al puerto `3003` para evitar conflictos.
+- **Auth**: Documentación actualizada para flujo de token de sesión.
+
+---
+
 ### Changed
 - actualizar documentación con interfaz web interactiva y cambios recientes
 

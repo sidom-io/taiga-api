@@ -100,6 +100,56 @@ cp .env.example .env
 uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8001
 ```
 
+## 🐳 Docker & Grafana Stack
+
+Para una experiencia completa con visualización de métricas:
+
+### 1. Levantar Stack
+```bash
+# Configurar variables (solo la primera vez)
+cp .env.docker.example .env
+# Editar .env si es necesario
+
+# Iniciar servicios (App + Postgres + Grafana + Prometheus)
+docker compose up -d
+```
+
+### 2. Autenticación (Token de Sesión)
+El token de Taiga es necesario para sincronizar datos. Se configura por sesión (no persiste al reiniciar el contenedor por seguridad).
+
+**Opción A: Interfaz Web**
+1. Abrir `http://localhost:8001/table-map?project=<TU_PROYECTO_ID>`
+2. El sistema solicitará el token automáticamente si no existe.
+
+**Opción B: API**
+```bash
+curl -X POST "http://localhost:8001/auth" \
+  -H "Content-Type: application/json" \
+  -d '{"token": "TU_TAIGA_TOKEN"}'
+```
+
+### 3. Sincronización de Datos
+Para ver métricas en Grafana, primero debes sincronizar los datos de Taiga a la base de datos local:
+
+```bash
+# Reemplaza '3' con el ID de tu proyecto
+curl -X POST "http://localhost:8001/sync?project=3"
+```
+
+### 4. Visualización en Grafana
+- **URL**: [http://localhost:3003](http://localhost:3003)
+- **Usuario**: `admin`
+- **Password**: `admin` (o el que hayas definido en .env)
+
+El dashboard **"Taiga Metrics Dashboard"** estará pre-cargado con:
+- Velocidad de Sprint (Story Points)
+- Tareas Estancadas (> 5 días)
+- Feed de Actividad
+- Resumen del Proyecto
+
+---
+```
+
 **Acceder a la aplicación:**
 - API Docs: http://localhost:8001/docs
 - Interfaz Web: http://localhost:8001/table-map?project=vuce-sidom-dai

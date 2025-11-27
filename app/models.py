@@ -7,7 +7,7 @@ These models represent the local synchronized copy of Taiga data.
 from datetime import datetime
 from typing import List, Optional
 
-from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String, Text, Float
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -99,6 +99,10 @@ class UserStory(Base):
     # Timestamps
     created_date: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     modified_date: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    finish_date: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+    # Metrics
+    total_points: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
 
     # Raw JSON data from Taiga API
     raw_data: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
@@ -138,6 +142,7 @@ class Task(Base):
     # Timestamps
     created_date: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     modified_date: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    finished_date: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     # Raw JSON data from Taiga API
     raw_data: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)

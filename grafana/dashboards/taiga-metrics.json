@@ -1,0 +1,796 @@
+{
+    "annotations": {
+        "list": [
+            {
+                "builtIn": 1,
+                "datasource": {
+                    "type": "datasource",
+                    "uid": "grafana"
+                },
+                "enable": true,
+                "hide": true,
+                "iconColor": "rgba(0, 211, 255, 1)",
+                "name": "Annotations & Alerts",
+                "type": "dashboard"
+            }
+        ]
+    },
+    "editable": true,
+    "fiscalYearStartMonth": 0,
+    "graphTooltip": 0,
+    "id": null,
+    "links": [],
+    "liveNow": false,
+    "panels": [
+        {
+            "datasource": {
+                "type": "grafana-simple-json-datasource",
+                "uid": "taiga_api"
+            },
+            "gridPos": {
+                "h": 9,
+                "w": 12,
+                "x": 0,
+                "y": 0
+            },
+            "id": 1,
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "grafana-simple-json-datasource",
+                        "uid": "taiga_api"
+                    },
+                    "refId": "A",
+                    "target": "/metrics/sprint-velocity?project=${project}&sprint_count=10"
+                }
+            ],
+            "title": "Velocidad de Sprint",
+            "type": "barchart",
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "barAlignment": 0,
+                        "drawStyle": "line",
+                        "fillOpacity": 80,
+                        "gradientMode": "none",
+                        "lineWidth": 1,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "auto",
+                        "spanNulls": false,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": null
+                            }
+                        ]
+                    }
+                },
+                "overrides": []
+            },
+            "options": {
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "list",
+                    "placement": "bottom",
+                    "showLegend": true
+                },
+                "tooltip": {
+                    "mode": "single",
+                    "sort": "none"
+                },
+                "xField": "Sprint",
+                "orientation": "auto",
+                "showValue": "auto",
+                "stacking": "none",
+                "groupWidth": 0.7,
+                "barWidth": 0.97
+            },
+            "description": "Story points completados por sprint. Visualiza la productividad del equipo a lo largo del tiempo."
+        },
+        {
+            "datasource": {
+                "type": "grafana-simple-json-datasource",
+                "uid": "taiga_api"
+            },
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": null
+                            },
+                            {
+                                "color": "yellow",
+                                "value": 3
+                            },
+                            {
+                                "color": "red",
+                                "value": 5
+                            }
+                        ]
+                    },
+                    "unit": "short"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 9,
+                "w": 12,
+                "x": 12,
+                "y": 0
+            },
+            "id": 2,
+            "options": {
+                "orientation": "auto",
+                "reduceOptions": {
+                    "values": false,
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "fields": ""
+                },
+                "showThresholdLabels": false,
+                "showThresholdMarkers": true,
+                "text": {}
+            },
+            "pluginVersion": "10.0.0",
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "grafana-simple-json-datasource",
+                        "uid": "taiga_api"
+                    },
+                    "refId": "A",
+                    "target": "/metrics/stuck-tasks?project=${project}&days_threshold=5"
+                }
+            ],
+            "title": "Tareas Estancadas",
+            "type": "gauge",
+            "description": "Número de tareas sin cambios por más de 5 días"
+        },
+        {
+            "datasource": {
+                "type": "grafana-simple-json-datasource",
+                "uid": "taiga_api"
+            },
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "fixed"
+                    },
+                    "custom": {
+                        "align": "auto",
+                        "cellOptions": {
+                            "type": "auto"
+                        },
+                        "inspect": false
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": null
+                            }
+                        ]
+                    }
+                },
+                "overrides": [
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "severity"
+                        },
+                        "properties": [
+                            {
+                                "id": "custom.cellOptions",
+                                "value": {
+                                    "type": "color-background"
+                                }
+                            },
+                            {
+                                "id": "mappings",
+                                "value": [
+                                    {
+                                        "options": {
+                                            "critical": {
+                                                "color": "dark-red",
+                                                "index": 0,
+                                                "text": "CRÍTICO"
+                                            }
+                                        },
+                                        "type": "value"
+                                    },
+                                    {
+                                        "options": {
+                                            "warning": {
+                                                "color": "dark-orange",
+                                                "index": 1,
+                                                "text": "ADVERTENCIA"
+                                            }
+                                        },
+                                        "type": "value"
+                                    },
+                                    {
+                                        "options": {
+                                            "info": {
+                                                "color": "dark-yellow",
+                                                "index": 2,
+                                                "text": "INFO"
+                                            }
+                                        },
+                                        "type": "value"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "days_stuck"
+                        },
+                        "properties": [
+                            {
+                                "id": "custom.width",
+                                "value": 80
+                            }
+                        ]
+                    }
+                ]
+            },
+            "gridPos": {
+                "h": 10,
+                "w": 24,
+                "x": 0,
+                "y": 9
+            },
+            "id": 3,
+            "options": {
+                "cellHeight": "sm",
+                "footer": {
+                    "countRows": false,
+                    "fields": "",
+                    "reducer": [
+                        "sum"
+                    ],
+                    "show": false
+                },
+                "showHeader": true,
+                "sortBy": [
+                    {
+                        "desc": true,
+                        "displayName": "days_stuck"
+                    }
+                ]
+            },
+            "pluginVersion": "10.0.0",
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "grafana-simple-json-datasource",
+                        "uid": "taiga_api"
+                    },
+                    "refId": "A",
+                    "target": "/metrics/stuck-tasks?project=${project}&days_threshold=${days_threshold}"
+                }
+            ],
+            "title": "Detalle de Tareas Estancadas",
+            "type": "table",
+            "transformations": [
+                {
+                    "id": "organize",
+                    "options": {
+                        "excludeByName": {
+                            "task_id": true,
+                            "taiga_id": true
+                        },
+                        "indexByName": {
+                            "ref": 0,
+                            "subject": 1,
+                            "status": 2,
+                            "user_story_ref": 3,
+                            "assigned_to": 4,
+                            "days_stuck": 5,
+                            "severity": 6
+                        },
+                        "renameByName": {
+                            "ref": "#",
+                            "subject": "Tarea",
+                            "status": "Estado",
+                            "user_story_ref": "US",
+                            "assigned_to": "Asignado a",
+                            "days_stuck": "Días",
+                            "severity": "Severidad"
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "datasource": {
+                "type": "grafana-simple-json-datasource",
+                "uid": "taiga_api"
+            },
+            "fieldConfig": {
+                "defaults": {
+                    "custom": {
+                        "align": "auto",
+                        "cellOptions": {
+                            "type": "auto"
+                        },
+                        "inspect": false
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": null
+                            }
+                        ]
+                    }
+                },
+                "overrides": [
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "type"
+                        },
+                        "properties": [
+                            {
+                                "id": "custom.cellOptions",
+                                "value": {
+                                    "type": "color-background"
+                                }
+                            },
+                            {
+                                "id": "mappings",
+                                "value": [
+                                    {
+                                        "options": {
+                                            "user_story_created": {
+                                                "color": "blue",
+                                                "index": 0,
+                                                "text": "US Creada"
+                                            },
+                                            "user_story_updated": {
+                                                "color": "light-blue",
+                                                "index": 1,
+                                                "text": "US Actualizada"
+                                            },
+                                            "task_created": {
+                                                "color": "green",
+                                                "index": 2,
+                                                "text": "Tarea Creada"
+                                            },
+                                            "task_updated": {
+                                                "color": "light-green",
+                                                "index": 3,
+                                                "text": "Tarea Actualizada"
+                                            }
+                                        },
+                                        "type": "value"
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            },
+            "gridPos": {
+                "h": 11,
+                "w": 24,
+                "x": 0,
+                "y": 19
+            },
+            "id": 4,
+            "options": {
+                "cellHeight": "sm",
+                "footer": {
+                    "countRows": false,
+                    "fields": "",
+                    "reducer": [
+                        "sum"
+                    ],
+                    "show": false
+                },
+                "showHeader": true,
+                "sortBy": [
+                    {
+                        "desc": true,
+                        "displayName": "timestamp"
+                    }
+                ]
+            },
+            "pluginVersion": "10.0.0",
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "grafana-simple-json-datasource",
+                        "uid": "taiga_api"
+                    },
+                    "refId": "A",
+                    "target": "/metrics/activity-feed?project=${project}&limit=${activity_limit}&hours=${activity_hours}"
+                }
+            ],
+            "title": "Feed de Actividad",
+            "type": "table",
+            "transformations": [
+                {
+                    "id": "organize",
+                    "options": {
+                        "excludeByName": {},
+                        "indexByName": {
+                            "timestamp": 0,
+                            "type": 1,
+                            "ref": 2,
+                            "subject": 3,
+                            "description": 4,
+                            "author": 5
+                        },
+                        "renameByName": {
+                            "timestamp": "Fecha",
+                            "type": "Evento",
+                            "ref": "#",
+                            "subject": "Título",
+                            "description": "Descripción",
+                            "author": "Autor",
+                            "status": "Estado"
+                        }
+                    }
+                }
+            ],
+            "description": "Actividad reciente del proyecto: creación y actualización de tareas y user stories"
+        },
+        {
+            "datasource": {
+                "type": "grafana-simple-json-datasource",
+                "uid": "taiga_api"
+            },
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": null
+                            }
+                        ]
+                    }
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 8,
+                "w": 6,
+                "x": 0,
+                "y": 30
+            },
+            "id": 5,
+            "options": {
+                "colorMode": "value",
+                "graphMode": "area",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "reduceOptions": {
+                    "values": false,
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "fields": "/^Total Tasks$/"
+                },
+                "textMode": "auto"
+            },
+            "pluginVersion": "10.0.0",
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "grafana-simple-json-datasource",
+                        "uid": "taiga_api"
+                    },
+                    "refId": "A",
+                    "target": "/metrics/project-summary?project=${project}"
+                }
+            ],
+            "title": "Total Tareas",
+            "type": "stat"
+        },
+        {
+            "datasource": {
+                "type": "grafana-simple-json-datasource",
+                "uid": "taiga_api"
+            },
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "mappings": [],
+                    "max": 100,
+                    "min": 0,
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "red",
+                                "value": null
+                            },
+                            {
+                                "color": "yellow",
+                                "value": 40
+                            },
+                            {
+                                "color": "green",
+                                "value": 70
+                            }
+                        ]
+                    },
+                    "unit": "percent"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 8,
+                "w": 6,
+                "x": 6,
+                "y": 30
+            },
+            "id": 6,
+            "options": {
+                "orientation": "auto",
+                "reduceOptions": {
+                    "values": false,
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "fields": "/^Task Completion %$/"
+                },
+                "showThresholdLabels": false,
+                "showThresholdMarkers": true
+            },
+            "pluginVersion": "10.0.0",
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "grafana-simple-json-datasource",
+                        "uid": "taiga_api"
+                    },
+                    "refId": "A",
+                    "target": "/metrics/project-summary?project=${project}"
+                }
+            ],
+            "title": "% Completado (Tareas)",
+            "type": "gauge"
+        },
+        {
+            "datasource": {
+                "type": "grafana-simple-json-datasource",
+                "uid": "taiga_api"
+            },
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": null
+                            }
+                        ]
+                    }
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 8,
+                "w": 6,
+                "x": 12,
+                "y": 30
+            },
+            "id": 7,
+            "options": {
+                "colorMode": "value",
+                "graphMode": "area",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "reduceOptions": {
+                    "values": false,
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "fields": "/^Total US$/"
+                },
+                "textMode": "auto"
+            },
+            "pluginVersion": "10.0.0",
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "grafana-simple-json-datasource",
+                        "uid": "taiga_api"
+                    },
+                    "refId": "A",
+                    "target": "/metrics/project-summary?project=${project}"
+                }
+            ],
+            "title": "Total User Stories",
+            "type": "stat"
+        },
+        {
+            "datasource": {
+                "type": "grafana-simple-json-datasource",
+                "uid": "taiga_api"
+            },
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": null
+                            }
+                        ]
+                    }
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 8,
+                "w": 6,
+                "x": 18,
+                "y": 30
+            },
+            "id": 8,
+            "options": {
+                "colorMode": "value",
+                "graphMode": "area",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "reduceOptions": {
+                    "values": false,
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "fields": "/^Epics$/"
+                },
+                "textMode": "auto"
+            },
+            "pluginVersion": "10.0.0",
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "grafana-simple-json-datasource",
+                        "uid": "taiga_api"
+                    },
+                    "refId": "A",
+                    "target": "/metrics/project-summary?project=${project}"
+                }
+            ],
+            "title": "Total Épicas",
+            "type": "stat"
+        }
+    ],
+    "refresh": "30s",
+    "schemaVersion": 38,
+    "style": "dark",
+    "tags": [
+        "taiga",
+        "project-management",
+        "metrics"
+    ],
+    "templating": {
+        "list": [
+            {
+                "current": {
+                    "selected": false,
+                    "text": "3",
+                    "value": "3"
+                },
+                "description": "Proyecto de Taiga a visualizar",
+                "hide": 0,
+                "label": "Proyecto",
+                "name": "project",
+                "options": [],
+                "query": "",
+                "skipUrlSync": false,
+                "type": "textbox"
+            },
+            {
+                "current": {
+                    "selected": false,
+                    "text": "5",
+                    "value": "5"
+                },
+                "description": "Días para considerar tarea estancada",
+                "hide": 0,
+                "label": "Días umbral",
+                "name": "days_threshold",
+                "options": [],
+                "query": "5",
+                "skipUrlSync": false,
+                "type": "textbox"
+            },
+            {
+                "current": {
+                    "selected": false,
+                    "text": "50",
+                    "value": "50"
+                },
+                "description": "Número de eventos en activity feed",
+                "hide": 0,
+                "label": "Eventos",
+                "name": "activity_limit",
+                "options": [],
+                "query": "50",
+                "skipUrlSync": false,
+                "type": "textbox"
+            },
+            {
+                "current": {
+                    "selected": false,
+                    "text": "168",
+                    "value": "168"
+                },
+                "description": "Horas atrás para buscar actividad (168 = 1 semana)",
+                "hide": 0,
+                "label": "Horas actividad",
+                "name": "activity_hours",
+                "options": [],
+                "query": "168",
+                "skipUrlSync": false,
+                "type": "textbox"
+            }
+        ]
+    },
+    "time": {
+        "from": "now-30d",
+        "to": "now"
+    },
+    "timepicker": {},
+    "timezone": "",
+    "title": "Taiga Metrics Dashboard",
+    "uid": "taiga_metrics",
+    "version": 1,
+    "weekStart": ""
+}

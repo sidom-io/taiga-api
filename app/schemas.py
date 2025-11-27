@@ -50,6 +50,8 @@ class UserStoryResponse(BaseModel):
     ref: int
     subject: str
     project: int
+    epic: Optional[int] = None
+    backlog_order: Optional[int] = None
     description: Optional[str] = None
     status: Optional[int] = None
     tags: Optional[List[Any]] = None

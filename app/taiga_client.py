@@ -376,7 +376,10 @@ class TaigaClient:
     async def update_user_story(
         self,
         user_story_id: int,
+        subject: Optional[str] = None,
         description: Optional[str] = None,
+        epic: Optional[int] = None,
+        backlog_order: Optional[int] = None,
         version: int = 1,
     ) -> Dict[str, Any]:
         """Actualiza una historia de usuario."""
@@ -385,8 +388,14 @@ class TaigaClient:
         headers = self._build_headers(token)
 
         payload: Dict[str, Any] = {"version": version}
+        if subject is not None:
+            payload["subject"] = subject
         if description is not None:
             payload["description"] = description
+        if epic is not None:
+            payload["epic"] = epic
+        if backlog_order is not None:
+            payload["backlog_order"] = backlog_order
 
         try:
             response = await client.patch(

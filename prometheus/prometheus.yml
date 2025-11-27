@@ -1,0 +1,20 @@
+# Prometheus configuration for Taiga metrics
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'taiga-monitor'
+
+# Scrape configurations
+scrape_configs:
+  # Taiga FastAPI metrics
+  - job_name: 'taiga-app'
+    static_configs:
+      - targets: ['taiga-app:8001']
+    metrics_path: '/metrics/prometheus'
+    scrape_interval: 30s
+
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']

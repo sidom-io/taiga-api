@@ -1,0 +1,118 @@
+version: '3.8'
+
+services:
+  # PostgreSQL database (shared for Taiga data and Grafana)
+  postgres:
+    image: postgres:15-alpine
+    container_name: taiga-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-taiga}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-taiga_password}
+      POSTGRES_DB: ${POSTGRES_DB:-taiga_db}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-grafana-db.sql:/docker-entrypoint-initdb.d/init-grafana-db.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - taiga-network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-taiga}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Taiga FastAPI application
+  taiga-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: taiga-app
+    environment:
+      # Taiga API configuration
+      TAIGA_BASE_URL: ${TAIGA_BASE_URL:-https://taiga.vuce.gob.ar/}
+      # Token opcional - se puede configurar desde la interfaz web
+      TAIGA_AUTH_TOKEN: ${TAIGA_AUTH_TOKEN:-}
+      TAIGA_TOKEN_TTL: ${TAIGA_TOKEN_TTL:-82800}
+
+      # Database configuration (PostgreSQL instead of SQLite)
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-taiga}:${POSTGRES_PASSWORD:-taiga_password}@postgres:5432/${POSTGRES_DB:-taiga_db}
+
+      # Application settings
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    volumes:
+      - ./data:/app/data
+      - ./alembic:/app/alembic
+    ports:
+      - "8001:8001"
+    networks:
+      - taiga-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Prometheus (optional - for metrics collection)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: taiga-prometheus
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=30d'
+    ports:
+      - "9091:9090"
+    networks:
+      - taiga-network
+    restart: unless-stopped
+
+  # Grafana for visualization
+  grafana:
+    image: grafana/grafana:10.4.2
+    container_name: taiga-grafana
+    environment:
+      # Grafana admin credentials
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+
+      # Database configuration (using same PostgreSQL)
+      GF_DATABASE_TYPE: postgres
+      GF_DATABASE_HOST: postgres:5432
+      GF_DATABASE_NAME: grafana
+      GF_DATABASE_USER: ${POSTGRES_USER:-taiga}
+      GF_DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-taiga_password}
+
+      # Server configuration
+      GF_SERVER_ROOT_URL: http://localhost:3000
+      GF_INSTALL_PLUGINS: grafana-clock-panel,grafana-simple-json-datasource
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+    ports:
+      - "3003:3000"
+    networks:
+      - taiga-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      taiga-app:
+        condition: service_started
+    restart: unless-stopped
+
+networks:
+  taiga-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local

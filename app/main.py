@@ -1,9 +1,10 @@
 import os
+from datetime import datetime
 from pathlib import Path
 from typing import Annotated, Dict, List, Optional, Union
 
 from dotenv import find_dotenv, load_dotenv
-from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from fastapi_mcp import FastApiMCP
@@ -43,6 +44,9 @@ app = FastAPI(title="Taiga Task API")
 # Configurar MCP Server
 mcp = FastApiMCP(app)
 mcp.mount()
+
+from app.simple_json_api import router as simple_json_router
+app.include_router(simple_json_router)
 
 # Configure Jinja2 templates
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
@@ -341,6 +345,8 @@ async def get_project_map(
             epic_user_stories = await taiga_client.list_user_stories(
                 project=project, titles_only=False, epic=epic_id
             )
+            # Ordenar por backlog_order
+            epic_user_stories.sort(key=lambda x: x.get("backlog_order", 0))
 
             # Track user story IDs
             for us in epic_user_stories:
@@ -447,12 +453,20 @@ async def get_user_story(
 async def update_user_story(
     user_story_id: int,
     taiga_client: TaigaClientDep,
+    subject: str = None,
     description: str = None,
+    epic: int = None,
+    backlog_order: int = None,
     version: int = 1,
 ) -> UserStoryResponse:
     try:
         story = await taiga_client.update_user_story(
-            user_story_id=user_story_id, description=description, version=version
+            user_story_id=user_story_id,
+            subject=subject,
+            description=description,
+            epic=epic,
+            backlog_order=backlog_order,
+            version=version,
         )
     except TaigaClientError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -603,6 +617,14 @@ async def sync_data(
             status_code=500,
             detail=f"Error durante la sincronización: {str(e)}",
         ) from e
+
+
+@app.get("/story-map", response_class=HTMLResponse)
+async def get_story_map(request: Request) -> HTMLResponse:
+    """
+    GET /story-map - Visual User Story Mapping Interface.
+    """
+    return templates.TemplateResponse("story_map.html", {"request": request})
 
 
 @app.get("/table-map", response_class=HTMLResponse)
@@ -1132,3 +1154,183 @@ async def create_tasks_from_markdown(
             )
 
     return BulkTaskResponse(total_tasks=len(tasks_data), created_tasks=created_tasks, errors=errors)
+
+
+# ============================================================================
+# GRAFANA METRICS ENDPOINTS
+# ============================================================================
+
+@app.get("/metrics/sprint-velocity")
+async def get_sprint_velocity_metrics(
+    project: Annotated[Union[int, str], Query(..., description="ID o slug del proyecto")],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    sprint_count: Annotated[int, Query(description="Número de sprints a incluir")] = 6,
+    use_milestones: Annotated[bool, Query(description="Usar milestones en lugar de semanas")] = False,
+) -> dict:
+    """
+    Métricas de velocidad de sprint para Grafana.
+
+    Retorna velocidad calculada basada en:
+    - Milestones de Taiga (si use_milestones=true)
+    - Semanas naturales (por defecto)
+
+    Returns:
+        Lista de sprints con story points y tareas completadas
+    """
+    from app.metrics_exporter import MetricsExporter
+
+    db_project = await _resolve_project(db, project)
+    if not db_project:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Project '{project}' not found. Run POST /sync?project={project} first."
+        )
+
+    exporter = MetricsExporter(db)
+
+    if use_milestones:
+        metrics = await exporter.get_sprint_velocity_by_milestone(
+            project_id=db_project.id,
+            limit=sprint_count
+        )
+    else:
+        metrics = await exporter.get_sprint_velocity(
+            project_id=db_project.id,
+            sprint_count=sprint_count
+        )
+
+    return {
+        "project_id": db_project.id,
+        "project_name": db_project.name,
+        "sprint_count": len(metrics),
+        "sprints": metrics,
+    }
+
+
+@app.get("/metrics/stuck-tasks")
+async def get_stuck_tasks_metrics(
+    project: Annotated[Union[int, str], Query(..., description="ID o slug del proyecto")],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    days_threshold: Annotated[int, Query(description="Días para considerar tarea estancada")] = 5,
+) -> dict:
+    """
+    Detecta tareas estancadas para alertas de Grafana.
+
+    Una tarea se considera estancada si:
+    - No está cerrada
+    - Lleva más de N días sin modificaciones
+    - No está en estado final (Done, Closed, etc.)
+
+    Returns:
+        Lista de tareas estancadas con severidad
+    """
+    from app.metrics_exporter import MetricsExporter
+
+    db_project = await _resolve_project(db, project)
+    if not db_project:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Project '{project}' not found. Run POST /sync?project={project} first."
+        )
+
+    exporter = MetricsExporter(db)
+    stuck_tasks = await exporter.get_stuck_tasks(
+        project_id=db_project.id,
+        days_threshold=days_threshold
+    )
+
+    # Agrupar por severidad
+    by_severity = {
+        "critical": [t for t in stuck_tasks if t["severity"] == "critical"],
+        "warning": [t for t in stuck_tasks if t["severity"] == "warning"],
+        "info": [t for t in stuck_tasks if t["severity"] == "info"],
+    }
+
+    return {
+        "project_id": db_project.id,
+        "project_name": db_project.name,
+        "total_stuck": len(stuck_tasks),
+        "by_severity": {
+            "critical": len(by_severity["critical"]),
+            "warning": len(by_severity["warning"]),
+            "info": len(by_severity["info"]),
+        },
+        "tasks": stuck_tasks,
+    }
+
+
+@app.get("/metrics/activity-feed")
+async def get_activity_feed_metrics(
+    project: Annotated[Union[int, str], Query(..., description="ID o slug del proyecto")],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    limit: Annotated[int, Query(description="Número máximo de eventos")] = 50,
+    hours: Annotated[int, Query(description="Horas atrás para buscar actividad")] = 168,
+) -> dict:
+    """
+    Feed de actividad para panel de Grafana.
+
+    Incluye:
+    - Creación de user stories y tareas
+    - Modificaciones (cambios de estado, actualización de campos)
+    - Comentarios (desde raw_data si están disponibles)
+
+    Returns:
+        Timeline de eventos ordenados por fecha
+    """
+    from app.metrics_exporter import MetricsExporter
+
+    db_project = await _resolve_project(db, project)
+    if not db_project:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Project '{project}' not found. Run POST /sync?project={project} first."
+        )
+
+    exporter = MetricsExporter(db)
+    activities = await exporter.get_activity_feed(
+        project_id=db_project.id,
+        limit=limit,
+        hours=hours
+    )
+
+    return {
+        "project_id": db_project.id,
+        "project_name": db_project.name,
+        "total_events": len(activities),
+        "time_range_hours": hours,
+        "activities": activities,
+    }
+
+
+@app.get("/metrics/project-summary")
+async def get_project_summary_metrics(
+    project: Annotated[Union[int, str], Query(..., description="ID o slug del proyecto")],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """
+    Resumen general del proyecto para Grafana.
+
+    Returns:
+        Estadísticas agregadas del proyecto
+    """
+    from app.metrics_exporter import MetricsExporter
+
+    db_project = await _resolve_project(db, project)
+    if not db_project:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Project '{project}' not found. Run POST /sync?project={project} first."
+        )
+
+    exporter = MetricsExporter(db)
+    summary = await exporter.get_project_summary(project_id=db_project.id)
+    summary["project_name"] = db_project.name
+    summary["project_slug"] = db_project.slug
+
+    return summary
+
+
+@app.get("/health")
+async def health_check() -> dict:
+    """Health check endpoint for Docker healthcheck."""
+    return {"status": "healthy", "timestamp": datetime.now().isoformat()}

@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Story Map | Taiga</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --card-border: rgba(148, 163, 184, 0.1);
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --accent-color: #3b82f6;
+            --epic-header-bg: rgba(59, 130, 246, 0.1);
+            --epic-header-border: rgba(59, 130, 246, 0.2);
+            --scrollbar-thumb: #334155;
+            --scrollbar-track: #0f172a;
+        }
+
+        * {
+            box-sizing: border_box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        header {
+            height: 60px;
+            padding: 0 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--card-border);
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(10px);
+            z-index: 10;
+        }
+
+        h1 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            background: linear-gradient(to right, #fff, #94a3b8);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .controls {
+            display: flex;
+            gap: 12px;
+        }
+
+        button {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            color: var(--text-primary);
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            background: rgba(59, 130, 246, 0.2);
+            border-color: var(--accent-color);
+        }
+
+        /* Board Container */
+        .board-container {
+            flex: 1;
+            overflow-x: auto;
+            overflow-y: hidden;
+            padding: 24px;
+            display: flex;
+            gap: 24px;
+        }
+
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--scrollbar-track);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--scrollbar-thumb);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+
+        /* Epic Column */
+        .epic-column {
+            min-width: 320px;
+            max-width: 320px;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            background: rgba(30, 41, 59, 0.3);
+            border-radius: 12px;
+            border: 1px solid var(--card-border);
+            backdrop-filter: blur(5px);
+        }
+
+        .epic-header {
+            padding: 16px;
+            border-bottom: 1px solid var(--card-border);
+            background: var(--epic-header-bg);
+            border-top-left-radius: 12px;
+            border-top-right-radius: 12px;
+            position: sticky;
+            top: 0;
+        }
+
+        .epic-title {
+            font-weight: 600;
+            font-size: 1rem;
+            margin-bottom: 4px;
+            color: #fff;
+        }
+
+        .epic-meta {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* Story List (Droppable Area) */
+        .story-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        /* User Story Card */
+        .story-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            padding: 12px;
+            cursor: grab;
+            transition: transform 0.2s, box-shadow 0.2s;
+            position: relative;
+        }
+
+        .story-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            border-color: rgba(148, 163, 184, 0.3);
+        }
+
+        .story-card.sortable-ghost {
+            opacity: 0.4;
+            background: #334155;
+        }
+
+        .story-card.sortable-drag {
+            cursor: grabbing;
+            opacity: 1;
+            background: #1e293b;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+            transform: scale(1.02);
+        }
+
+        .story-subject {
+            font-size: 0.9rem;
+            line-height: 1.4;
+            margin-bottom: 8px;
+            color: #e2e8f0;
+        }
+
+        .story-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .tag {
+            background: rgba(59, 130, 246, 0.1);
+            color: #60a5fa;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+        }
+
+        /* Loading State */
+        #loading {
+            position: fixed;
+            inset: 0;
+            background: var(--bg-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            font-size: 1.5rem;
+            color: var(--accent-color);
+        }
+
+        /* Notification */
+        #notification {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: #10b981;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            transform: translateY(150%);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            z-index: 50;
+        }
+
+        #notification.show {
+            transform: translateY(0);
+        }
+
+        #notification.error {
+            background: #ef4444;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="loading">Cargando Story Map...</div>
+
+    <header>
+        <h1 id="project-title">Cargando...</h1>
+        <div class="controls">
+            <button onclick="refreshData()">🔄 Recargar</button>
+        </div>
+    </header>
+
+    <div class="board-container" id="board">
+        <!-- Epics will be injected here -->
+    </div>
+
+    <div id="notification">Cambio guardado</div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const PROJECT_ID = urlParams.get('project');
+
+        if (!PROJECT_ID) {
+            alert("Falta el parámetro ?project=ID en la URL");
+        }
+
+        async function fetchData() {
+            try {
+                const response = await fetch(`/project-map?project=${PROJECT_ID}`);
+                if (!response.ok) throw new Error("Error cargando datos");
+                return await response.json();
+            } catch (err) {
+                console.error(err);
+                showNotification("Error de conexión", true);
+            }
+        }
+
+        async function init() {
+            const data = await fetchData();
+            if (!data) return;
+
+            document.getElementById('project-title').textContent = `Story Map: ${data.project}`;
+            renderBoard(data);
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        function renderBoard(data) {
+            const board = document.getElementById('board');
+            board.innerHTML = '';
+
+            // Render Epics
+            data.epics.forEach(epic => {
+                const col = createEpicColumn(epic);
+                board.appendChild(col);
+            });
+
+            // Render Orphans if any
+            if (data.user_stories_without_epic.length > 0) {
+                const orphanEpic = {
+                    id: null, // Special ID for no epic
+                    subject: "Sin Épica",
+                    user_stories: data.user_stories_without_epic,
+                    total_user_stories: data.user_stories_without_epic.length
+                };
+                board.appendChild(createEpicColumn(orphanEpic));
+            }
+        }
+
+        function createEpicColumn(epic) {
+            const col = document.createElement('div');
+            col.className = 'epic-column';
+            col.dataset.epicId = epic.id;
+
+            col.innerHTML = `
+                <div class="epic-header" style="border-top: 3px solid ${epic.color || '#3b82f6'}">
+                    <div class="epic-title">${epic.subject}</div>
+                    <div class="epic-meta">
+                        <span>${epic.total_user_stories} historias</span>
+                        <span>#${epic.ref || '?'}</span>
+                    </div>
+                </div>
+                <div class="story-list" id="list-${epic.id}"></div>
+            `;
+
+            const list = col.querySelector('.story-list');
+
+            epic.user_stories.forEach(story => {
+                list.appendChild(createStoryCard(story));
+            });
+
+            // Initialize Sortable
+            new Sortable(list, {
+                group: 'shared', // Allow dragging between columns
+                animation: 150,
+                ghostClass: 'sortable-ghost',
+                dragClass: 'sortable-drag',
+                onEnd: async function (evt) {
+                    const itemEl = evt.item;
+                    const newEpicId = evt.to.closest('.epic-column').dataset.epicId;
+                    const storyId = itemEl.dataset.storyId;
+                    const newIndex = evt.newIndex; // 0-based index in the new list
+
+                    // Calculate new backlog_order
+                    // Taiga uses large integers for order.
+                    // A simple strategy is to take the order of the prev and next items and average them,
+                    // or just send the index if we implement a reorder endpoint that handles it.
+                    // For now, let's just update the EPIC.
+                    // TODO: Implement precise reordering logic if needed.
+
+                    // NOTE: Taiga API usually expects 'backlog_order' as a specific integer.
+                    // To simplify for this demo, we will just update the EPIC.
+                    // Updating exact order requires knowing the neighbor's order values.
+
+                    await updateStory(storyId, {
+                        epic: newEpicId === "null" ? null : parseInt(newEpicId)
+                        // backlog_order: ... (Complex to calculate without neighbor data)
+                    });
+                }
+            });
+
+            return col;
+        }
+
+        function createStoryCard(story) {
+            const card = document.createElement('div');
+            card.className = 'story-card';
+            card.dataset.storyId = story.id;
+
+            const tagsHtml = (story.tags || []).map(t => `<span class="tag">${t}</span>`).join('');
+
+            card.innerHTML = `
+                <div class="story-subject">${story.subject}</div>
+                <div class="story-meta">
+                    <span>#${story.ref}</span>
+                    <div class="tags">${tagsHtml}</div>
+                </div>
+            `;
+            return card;
+        }
+
+        async function updateStory(id, payload) {
+            try {
+                const response = await fetch(`/user-stories/${id}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    showNotification("Guardado correctamente");
+                } else {
+                    throw new Error("Error al guardar");
+                }
+            } catch (err) {
+                console.error(err);
+                showNotification("Error al guardar cambios", true);
+                // TODO: Revert UI change
+            }
+        }
+
+        function showNotification(msg, isError = false) {
+            const notif = document.getElementById('notification');
+            notif.textContent = msg;
+            notif.className = isError ? 'error' : '';
+            notif.classList.add('show');
+            setTimeout(() => notif.classList.remove('show'), 3000);
+        }
+
+        function refreshData() {
+            document.getElementById('loading').style.display = 'flex';
+            init();
+        }
+
+        // Start
+        init();
+    </script>
+</body>
+
+</html>

@@ -16,15 +16,22 @@ from app.models import DraftBoard, Epic, Project, Tag, Task, TaskTag, UserStory,
 
 
 def parse_datetime(value: any) -> datetime:
-    """Parse datetime from string or return datetime object."""
+    """Parse datetime from string or return datetime object.
+
+    Removes timezone info to avoid PostgreSQL errors with
+    TIMESTAMP WITHOUT TIME ZONE columns.
+    """
     if isinstance(value, str):
         # Parse ISO format datetime from Taiga
         # Remove 'Z' suffix and parse
         if value.endswith('Z'):
             value = value[:-1] + '+00:00'
-        return datetime.fromisoformat(value.replace('Z', '+00:00'))
+        dt = datetime.fromisoformat(value.replace('Z', '+00:00'))
+        # Remove timezone info for PostgreSQL compatibility
+        return dt.replace(tzinfo=None)
     elif isinstance(value, datetime):
-        return value
+        # Remove timezone if present
+        return value.replace(tzinfo=None) if value.tzinfo else value
     else:
         return datetime.utcnow()
 
@@ -191,8 +198,9 @@ async def create_or_update_userstory(
         existing.is_closed = us_data.get("is_closed", False)
         existing.version = us_data.get("version", 1)
         existing.milestone_name = us_data.get("milestone_name")
-        existing.ref = us_data.get("ref")
         existing.modified_date = parse_datetime(us_data.get("modified_date", datetime.utcnow()))
+        existing.finish_date = parse_datetime(us_data.get("finish_date")) if us_data.get("finish_date") else None
+        existing.total_points = float(us_data.get("total_points")) if us_data.get("total_points") is not None else None
         existing.raw_data = us_data
         existing.last_synced = datetime.utcnow()
         await db.commit()
@@ -213,6 +221,8 @@ async def create_or_update_userstory(
             milestone_name=us_data.get("milestone_name"),
             created_date=parse_datetime(us_data.get("created_date", datetime.utcnow())),
             modified_date=parse_datetime(us_data.get("modified_date", datetime.utcnow())),
+            finish_date=parse_datetime(us_data.get("finish_date")) if us_data.get("finish_date") else None,
+            total_points=float(us_data.get("total_points")) if us_data.get("total_points") is not None else None,
             raw_data=us_data,
             last_synced=datetime.utcnow(),
         )
@@ -272,6 +282,7 @@ async def create_or_update_task(
         existing.assigned_to_username = task_data.get("assigned_to_extra_info", {}).get("username")
         existing.ref = task_data.get("ref")
         existing.modified_date = parse_datetime(task_data.get("modified_date", datetime.utcnow()))
+        existing.finished_date = parse_datetime(task_data.get("finished_date")) if task_data.get("finished_date") else None
         existing.raw_data = task_data
         existing.last_synced = datetime.utcnow()
         await db.commit()
@@ -292,6 +303,7 @@ async def create_or_update_task(
             assigned_to_username=task_data.get("assigned_to_extra_info", {}).get("username"),
             created_date=parse_datetime(task_data.get("created_date", datetime.utcnow())),
             modified_date=parse_datetime(task_data.get("modified_date", datetime.utcnow())),
+            finished_date=parse_datetime(task_data.get("finished_date")) if task_data.get("finished_date") else None,
             raw_data=task_data,
             last_synced=datetime.utcnow(),
         )
